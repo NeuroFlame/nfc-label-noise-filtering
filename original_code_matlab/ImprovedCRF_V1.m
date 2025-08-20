@@ -9,7 +9,7 @@
 % "Complete random forest based class noise filtering learning for improving the generalizability of classifiers".
 % Cite: Xia, S., Wang, G., Chen, Z., Duan, Y., and liu, Q. (2019). 
 %       Complete random forest based class noise filtering learning for improving the generalizability of classifiers. 
-%       IEEE Trans. Knowl. Data Eng. 31, 2063¨C2078. https://doi.org/10.1109/TKDE.2018.2873791
+%       IEEE Trans. Knowl. Data Eng. 31, 2063ï¿½C2078. https://doi.org/10.1109/TKDE.2018.2873791
 % Input:
 % train data([label attr]); ntree:Number of trees in CRDT; NI_threshold:Noise intensity (NI)
 % Output:
@@ -53,6 +53,9 @@ NLTCLabelS = [NLTCLabelS1 NLTCLabelS2];
 NLTCLabelS(NLTCLabelS<NI_threshold)=0; % no
 NLTCLabelS(NLTCLabelS>=NI_threshold)=1; % yes
 
+
+%%
+% For each sub from one 0 or 1, 101 for class 1, 101 trees for class  -> binary vote
 isNoiseData(1:numTrainSample)=0;  % 1-noise 0-non-noise
 for i=1:numTrainSample
     if sum(NLTCLabelS(i,:))>0.5*ntree*nt % voting
@@ -119,7 +122,7 @@ reData=[data,m];
 end
 
 % whether continuous features
-% isContiData: 1-continuous features¡¡0-discrete features
+% isContiData: 1-continuous featuresï¿½ï¿½0-discrete features
 function [isContiData]=isContiFunc(data)
 [m,n]=size(data);
 m=m/3;
@@ -295,8 +298,11 @@ for v = 1:FeaValueNum
     U1 = mean(Group1);
     W2 = length(Group2);
     U2 = mean(Group2);
-    U= W1* U1 + W2* U2;
-    fun(v)= W1*(U1-U)^2+ W2*( U2-U)^2;
+    U= W1* U1 + W2* U2; % overrall weighted mean
+    
+    % This measures how far apart the two class means are, weighted by class sizes.
+    % A larger value means a better separation if you split at te.
+    fun(v)= W1*(U1-U)^2+ W2*( U2-U)^2; % computer betweem-class variance
 end
 
 [~,FeaID] = max(fun);
@@ -311,9 +317,9 @@ function [output] = ParallelSort(Frequency)
 Frequency = reshape(Frequency,1,length(Frequency));
 [y,k] = sort(Frequency,'descend');
 idx = [true diff(y)~=0];
-ix = k(idx);
-t(k) = cumsum(idx);
-k(k) = 1:numel(Frequency);
+ix = k(idx); % unique index from frequency 
+t(k) = cumsum(idx); % t is an array with index of k taking values of prefix sum
+k(k) = 1:numel(Frequency); %k(k) is the index of the original array
 k = k(ix(t));
 [output] = find(k==1);
 end

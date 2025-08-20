@@ -79,6 +79,9 @@ for D = 1:length(DataName)
     for i = 1:iter
         deNoiseCheck(nonNoiseDataInd{:,i}) = deNoiseCheck(nonNoiseDataInd{:,i})+1;
     end
+
+    % 311 subject, for 100 iters , 70%, 201
+    % sub i, no of smaple, non- noise
     deNoiseIndicator = deNoiseCheck./count(:,2);
     count(:,3) = deNoiseCheck;
     count(:,4) = deNoiseIndicator;
@@ -106,7 +109,7 @@ end
 
 %% Predict scores for each independent dataset
 function [] = PredictScore(DataName,LoadDataPath,SavePath,TypThs)
-for IndID = 1:length(DataName)
+for IndID = 1:length(DataName) % FBIRN
     fprintf('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Scoring independent subjects in %s dataset...\n',DataName{IndID});
     load(strcat(LoadDataPath,DataName{IndID},'.mat'));
     IndepData = eval(DataName{IndID}); clear FBIRN MPRC BSNIP COBRE
@@ -117,7 +120,7 @@ for IndID = 1:length(DataName)
         if IndID==MainID
             IndepScore(:,MainID) = IndepLabel;
             continue
-        end
+        end % COBRE
 
         load(strcat(LoadDataPath,DataName{MainID},'.mat')); % load source dataset
         load(strcat(SavePath,DataName{MainID},'_Count.mat'),'count') % non-noise ratio for subjects in the source dataset

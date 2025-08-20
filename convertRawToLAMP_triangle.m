@@ -1,17 +1,18 @@
 function convertRawToLAMP_triangle(srcDir, destDir)
-% convertRawToLAMP_triangle  Convert raw .mat files into LAMP pipeline format using
-% only the unique off-diagonal entries of the connectivity (lower triangle).
-%
+% convertRawToLAMP_triangle  Convert raw .mat files into LAMP pipeline format by
+% extracting the lower triangle (including diagonal) of sFNC and appending labels
+% in the last column.
+% 
 %   convertRawToLAMP_triangle(srcDir, destDir)
-%
+% 
 %   - srcDir  : folder containing original .mat files with fields:
 %                 FILE_ID (1×F cell), analysis_SCORE (N×F), sFNC (N×P×P)
 %   - destDir : folder where processed .mat files will be written (created if needed)
-%
+% 
 % Each output .mat will contain exactly one variable, named after the cohort
-% (e.g. "FBIRN"), of size N×(1 + P*(P-1)/2):
-%   col 1 = diagnosis labels (1 or 2)
-%   cols 2:end = flattened lower-triangle connectivity (excluding diagonal)
+% (e.g. "FBIRN"), of size N×(P*(P+1)/2 + 1):
+%   cols 1:end-1 = flattened lower-triangle connectivity (including diagonal)
+%   col end       = diagnosis labels (1 or 2)
 
   if nargin<2
     error('Usage: convertRawToLAMP_triangle(srcDir, destDir)');
@@ -52,21 +53,21 @@ function convertRawToLAMP_triangle(srcDir, destDir)
     end
     labels = rawLabels;
 
-    % Flatten only lower triangle of sFNC
+    % Flatten only lower triangle (including diagonal) of sFNC
     N = size(R.sFNC,1);
     P = size(R.sFNC,2);
-    mask = tril(true(P), 0);  % lower triangle including diagonal           % lower triangle, excluding diagonal
+    disp(['Processing dataset: ' dsName ', subjects: ' num2str(N) ', features: ' num2str(P)]);
+    mask = tril(true(P), -1);            
     idx  = find(mask);
-    % reshape to N×(P*P), then select lower-triangle columns
     allFeat = reshape(R.sFNC, N, P*P);
-    feats   = allFeat(:, idx);         % N×(P*(P-1)/2)
+    feats   = allFeat(:, idx);          % N×(P*(P+1)/2)
 
-    % Assemble matrix [labels | features]
-    M = [labels, feats];               % N×(1 + P*(P-1)/2)
+    % Assemble matrix [features | labels]
+    M = [feats, labels];                % N×(P*(P+1)/2 + 1)
 
     % Save under variable named after dataset
     varName = matlab.lang.makeValidName(dsName);
-    eval(sprintf('%s = M;', varName)); %#ok<EVLMT>
+    eval(sprintf('%s = M;', varName));  %#ok<EVLMT>
     outPath = fullfile(destDir, [varName,'.mat']);
     save(outPath, varName, '-v7.3');
     fprintf('Wrote %s (%d subjects × %d features + label)\n', outPath, N, size(feats,2));
