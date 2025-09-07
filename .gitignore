@@ -3,6 +3,11 @@ data/
 original_dataset/
 matlab/
 result/
+results/
+dataset/
 demo.ipynb
 *.log
 __pycache__
+test_output/
+*.err
+*.out

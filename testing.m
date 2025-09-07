@@ -5,12 +5,10 @@ scriptFile = which('testing.m');
 rootDir    = fileparts(scriptFile);
 
 %% 2) make sure MATLAB sees your pipeline code
-addpath( genpath(fullfile(rootDir,'matlab')) );
+addpath( genpath(fullfile(rootDir,'original_code_matlab')));
 
 %% 3) override LAMP’s I/O paths
 LoadDataPath = fullfile(rootDir,'data', filesep);
-SavePath     = fullfile(rootDir,'result', filesep);
-if ~exist(SavePath,'dir'), mkdir(SavePath); end
 datasetList = {'FBIRN','COBRE'};
 %% 4) set up your two-dataset run
 DataName     = datasetList;   % {'FBIRN','COBRE'}
@@ -18,9 +16,14 @@ SamplingThs  = 0.7;
 iter         = 101;
 ntree        = 201;
 NI_threshold = 2;
-TypThs       = 0.4;
+TypThs       = 0.8;
 
 %% 5) run the full pipeline
+
+id = getenv('SLURM_ARRAY_TASK_ID')
+name = sprintf('round_%s', id)
+SavePath = fullfile(rootDir,'result', filesep, name, filesep);
+if ~exist(SavePath,'dir'), mkdir(SavePath); end
 LAMP;   % internally does CountNonNoise → FindTyp → PredictScore
 
 exit;

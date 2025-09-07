@@ -1,6 +1,9 @@
 import numpy as np
-from . import build_crf as crf
+# from . import build_crf as crf
+from . import iterative_crf as crf
 from . import crf_helpers as helper
+
+from joblib import Parallel, delayed
 
 class CRF:
     def __init__(self, ntree: int, label_noise_threshold: int):
@@ -16,19 +19,52 @@ class CRF:
             (train_data, np.arange(1, subjects_count + 1).reshape(-1, 1))
         )
 
-        for _ in range(ntree):
-            self.rf_1.append(crf.build_crf(train_data, is_continuous_data, [], 1))
-            self.rf_2.append(crf.build_crf(train_data, is_continuous_data, [], 2))
+        # final_output_1= np.empty(ntree, dtype=np.ndarray)
+        # final_output_2= np.empty(ntree, dtype=np.ndarray)
+        
+        final_output_1 = Parallel(
+                n_jobs=8,
+                prefer="processes",
+                batch_size="auto"
+        )(
+            delayed(crf.build_crf_results_iter)(
+                train_data, is_continuous_data, 1
+            )
+            for _ in range(ntree)
+        )
+        
+        final_output_2 = Parallel(
+                n_jobs=8,
+                prefer="processes",
+                batch_size="auto"
+        )(
+            delayed(crf.build_crf_results_iter)(
+                train_data, is_continuous_data, 2
+            )
+            for _ in range(ntree)
+        )
+        
+        # for i in range(ntree):
+        #     final_output_1[i] = crf.build_crf_results_iter(train_data, is_continuous_data, 1)
+        #     final_output_2[i] = crf.build_crf_results_iter(train_data, is_continuous_data, 2)
 
-        subject_noise_desicion = self.compute_nltc_sequence(train_data)
+        final_output_1 = np.hstack(final_output_1)
+        final_output_2 = np.hstack(final_output_2)
 
-        noise_subjects = (subject_noise_desicion.sum(axis=1) > 0.5 * ntree * 2).astype(
+        final_decisions = np.hstack([final_output_1, final_output_2])
+
+        final_decisions[final_decisions < self.label_noise_threshold] = 0 # non-noise
+        final_decisions[final_decisions >= self.label_noise_threshold] = 1 # noise
+
+        noise_subjects = (final_decisions.sum(axis=1) > 0.5 * ntree * 2).astype(
             int
         )
-        non_noise_subject_id: np.ndarray = np.where(noise_subjects == 0)[0]
-        non_noise_data = train_data[non_noise_subject_id, :]
 
-        return non_noise_data, non_noise_subject_id, subject_noise_desicion
+        non_noise_subject_id: np.ndarray = np.where(noise_subjects == 0)[0]
+
+        # non_noise_data = train_data[non_noise_subject_id, :]
+
+        return non_noise_subject_id, final_decisions
 
     def compute_nltc_sequence(self, train_data: np.ndarray):
         # removing id's from the train_data:

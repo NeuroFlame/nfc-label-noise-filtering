@@ -7,23 +7,35 @@
 %% It is worth mentioning that this code should run on two or more datasets, and the more datasets, the more stable the results.
 % Format of the input data: matrix, where each row represents a single sample, and each column represents a feature. 
 
-clear
-clc
-close all
+% clear
+% clc
+% close all
 
 %% INPUT:
 % Dataset Name, storage location of data and results
-DataName = {'FBIRN', 'MPRC', 'BSNIP','COBRE'}; % Dataset Name
-LoadDataPath = '..\data\'; % Data storage location
-SavePath = '..\result\'; % Results storage location
+if ~exist('DataName','var')
+  DataName = {'FBIRN','MPRC','BSNIP','COBRE'};
+end
+if ~exist('LoadDataPath','var')
+  % now your testing.m override will stick
+  LoadDataPath = fullfile(pwd,'data',filesep);
+end
 
-% Parameters for CRF-based model
-SamplingThs = 0.7; % Balance data - Downsampling ratio
-iter = 101; % Maximum number of iterations, number of CRDT
-ntree = 201; % Number of trees in CRDT
-NI_threshold = 2; %  Noise intensity (NI)
-% Parameters for selecting typical subjects
-TypThs = 0.8;
+if ~exist('SavePath','var')
+  SavePath = fullfile(pwd,'result',filesep);
+end
+
+if ~exist('SamplingThs','var'),   SamplingThs   = 0.7;   end
+if ~exist('iter','var'),          iter          = 101;   end
+if ~exist('ntree','var'),         ntree         = 201;   end
+if ~exist('NI_threshold','var'),  NI_threshold  = 2;     end
+if ~exist('TypThs','var'),        TypThs        = 0.8;   end
+    
+path = sprintf("%s/ImprovedCRF.log", SavePath);
+
+global logFID
+logFID = fopen(path,'a');
+
 
 %% Estimating the non-noise rate of each sample in each source dataset
 CountNonNoise(DataName,LoadDataPath,SavePath,SamplingThs,iter,ntree,NI_threshold)
@@ -38,6 +50,7 @@ PredictScore(DataName,LoadDataPath,SavePath,TypThs)
 
 %% Estimate the non-noise rate of each sample in each dataset
 function [] = CountNonNoise(DataName,LoadDataPath,SavePath,SamplingThs,iter,ntree,NI_threshold)
+    global logFID
 for D = 1:length(DataName)
     load(strcat(LoadDataPath,DataName{D},'.mat'));
     data = eval(DataName{D});
@@ -127,7 +140,7 @@ for IndID = 1:length(DataName) % FBIRN
 
         data = eval(DataName{MainID}); clear FBIRN MPRC BSNIP COBRE
         TypData = data(count(:,4)>=TypThs,:); % typical subjects in the source dataset
-        [IndepScore(:,MainID)] = ScoreComput(IndepData,TypData);
+        [IndepScore(:,MainID)] = ScoreComput(IndepData,TypData, DataName{MainID}, SavePath);
     end
     IndepScore(:,5) = mean(IndepScore(:,setdiff([1:length(DataName)],IndID)),2);
     idx = any(IndepScore(:,1:length(DataName))==0,2);
@@ -138,7 +151,8 @@ end
 end
 
 %% Predict scores for subjects in the independent dataset based on the typical subjects in the source datasets
-function  [Scores] = ScoreComput(IndepData,MainData)
+function  [Scores] = ScoreComput(IndepData,MainData, MainDataName, SavePath)
+    global logFID
 Col = size(IndepData,2);
 IndepAttr = IndepData(:,1:Col-1);
 
@@ -151,6 +165,11 @@ end
 [~,Pval] = ttest2(MainGroup1,MainGroup2);
 Fea = CumFea(Pval,0.01/(Col-1));
 
+for k = 1:numel(Fea)
+    fprintf(logFID, '%d ', Fea(k));
+end
+fprintf(logFID, '\n\n\n');
+
 [Center1] = mean(MainGroup1(:,Fea));
 [Center2] = mean(MainGroup2(:,Fea));
 
@@ -160,6 +179,12 @@ Distance = DisTypicalGroup1+DisTypicalGroup2;
 A = DisTypicalGroup1./(Distance);
 B = DisTypicalGroup2./(Distance);
 Scores = tan((A-B)*pi/2);
+
+Selected_Features = sort(Fea(:));
+Center_SZ = Center1(:);
+Center_HC = Center2(:);
+
+save(strcat(SavePath, MainDataName, '_Centers.mat'), 'Center_SZ', 'Center_HC', 'Selected_Features')
 
 end
 
