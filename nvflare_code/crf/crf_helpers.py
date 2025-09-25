@@ -98,6 +98,7 @@ def parallel_sort(frequency: np.ndarray) -> np.ndarray:
     max_val = np.max(freq)
     return np.flatnonzero(freq == max_val)
 
+
 def node_label(data: np.ndarray, flag: int, up_labels: list) -> int:
     """
     Input:

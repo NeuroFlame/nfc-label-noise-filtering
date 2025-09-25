@@ -1,12 +1,16 @@
 import numpy as np
+from numpy.random import Generator, PCG64
 from collections import Counter
 from .crf_helpers import node_label, otsu4_thres, check_label_sequence
+
 
 def build_crf_results_iter(
     data: np.ndarray,
     is_continuous: np.ndarray,
     flag: int,
+    sd_id: int
 ) -> np.ndarray:
+    rng_tree = Generator(PCG64(sd_id))
 
     if data.size == 0:
         raise ValueError("The data is empty")
@@ -59,7 +63,7 @@ def build_crf_results_iter(
 
         # --- Pick a splittable feature (features are cols 1..F-2) ---
         best_attr = None
-        for rf in np.random.permutation(features - 2):
+        for rf in rng_tree.permutation(features - 2):
             # need >1 distinct values to split
             if np.unique(data[rows, 1 + rf]).size > 1:
                 best_attr = rf
@@ -105,7 +109,7 @@ def build_crf_results_iter(
         else:
             # Random category for discrete feature
             vals = np.unique(feat)
-            pick = np.random.choice(vals)
+            pick = rng_tree.choice(vals)
             mask = (feat == pick)
 
         left_idx = rows[mask]

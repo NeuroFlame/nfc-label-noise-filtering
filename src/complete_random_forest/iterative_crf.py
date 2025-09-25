@@ -6,6 +6,7 @@ from .crf_helpers import node_label, otsu4_thres, check_label_sequence
 # You already have these:
 # from .crf_helpers import node_label, otsu4_thres, check_label_sequence
 
+
 def build_crf_results_iter(
     data: np.ndarray,
     is_continuous: np.ndarray,
@@ -38,9 +39,11 @@ def build_crf_results_iter(
             leaf_label = int(data[rows[0], 0])
         else:
             leaf_label = int(force_label)
-        labels_seq = np.array((leaf_label, *up), dtype=int)  # [node_label, ancestors...]
+        # [node_label, ancestors...]
+        labels_seq = np.array((leaf_label, *up), dtype=int)
         sub = check_label_sequence(labels_seq)
-        out_blocks.append(np.column_stack((ids, np.full(ids.shape[0], sub, dtype=int))))
+        out_blocks.append(np.column_stack(
+            (ids, np.full(ids.shape[0], sub, dtype=int))))
 
     while stack:
         lo, hi, up = stack.pop()
@@ -81,7 +84,8 @@ def build_crf_results_iter(
                 labels_block = data[rows, 0].astype(int)
 
                 subs = np.fromiter(
-                    (check_label_sequence(np.array((lbl, *up), dtype=int)) for lbl in labels_block),
+                    (check_label_sequence(np.array((lbl, *up), dtype=int))
+                     for lbl in labels_block),
                     dtype=int,
                     count=rows.size,
                 )
@@ -120,7 +124,8 @@ def build_crf_results_iter(
                 ids_block = data[rows, -1].astype(int)
                 labels_block = data[rows, 0].astype(int)
                 subs = np.fromiter(
-                    (check_label_sequence(np.array((lbl, *up), dtype=int)) for lbl in labels_block),
+                    (check_label_sequence(np.array((lbl, *up), dtype=int))
+                     for lbl in labels_block),
                     dtype=int,
                     count=rows.size,
                 )
@@ -142,8 +147,8 @@ def build_crf_results_iter(
     result = np.vstack(out_blocks)
     ids = result[:, 0].astype(int)
     vals = result[:, 1].astype(int)
-    
+
     scores = np.empty(sub_count, dtype=int)
-    scores[ids-1]=vals # becasue of id's are 1-based
-    
-    return scores.reshape(-1,1)
+    scores[ids-1] = vals  # becasue of id's are 1-based
+
+    return scores.reshape(-1, 1)

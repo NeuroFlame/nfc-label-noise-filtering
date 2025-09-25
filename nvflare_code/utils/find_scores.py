@@ -98,9 +98,9 @@ def get_centroids(
         typical_hc_data[:, selected_features], axis=0).reshape(1, -1)
 
     return {
-            "center_sz": center_sz, 
-            "center_hc": center_hc, 
-            "selected_features": selected_features, 
-            'typ_sz': typ_sz, 
-            'typ_hc': typ_hc
-        }
+        "center_sz": center_sz,
+        "center_hc": center_hc,
+        "selected_features": selected_features,
+        'typ_sz': typ_sz,
+        'typ_hc': typ_hc
+    }

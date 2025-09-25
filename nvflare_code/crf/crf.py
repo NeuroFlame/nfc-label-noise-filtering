@@ -2,6 +2,7 @@ import os
 import numpy as np
 from math import floor
 from joblib import Parallel, delayed
+from numpy.random import Generator
 from scipy.stats import zscore
 from scipy.io import savemat
 # from ..src.data_loaders import load_result_matfile
@@ -14,7 +15,8 @@ def perform_crf(
     dataset: np.ndarray,
     result_path: str,
     name: str,
-    parameters: dict[str, any]
+    parameters: dict[str, any],
+    rng: Generator
 ):
     """
     consisting of subjects with there features as columns
@@ -61,7 +63,7 @@ def perform_crf(
         print(f"Constructing No. {i+1} CRF for {name} dataset")
         index_temp = []
         for cls in label_classes:
-            random_sampling_indexes = np.random.permutation(
+            random_sampling_indexes = rng.permutation(
                 original_cls_label_indexes[cls]
             )[:mean_sub_sampling_length]
             index_temp.extend(random_sampling_indexes)
@@ -77,7 +79,7 @@ def perform_crf(
         training_data = np.hstack((sampled_dataset_labels, attributes))
 
         # denoise_data, non_noise_ID, NLTC_labels =  running_crf(training_data, ntree, NI_threshold)
-        non_noise_ids, nltc_labels = crf_v1(training_data, parameters)
+        non_noise_ids, nltc_labels = crf_v1(training_data, parameters, rng=rng)
         nltc_decisions.append(nltc_labels)
         # print("picked sampling number: ", sampling_indexes[non_noise_ids, i])
         non_noise_sampling_subjects.append(random_indices[non_noise_ids])
@@ -108,7 +110,12 @@ def perform_crf(
     return final_mat
 
 
-def crf_v1(train_data: np.ndarray, parameters: dict[str, any]):
+def crf_v1(train_data: np.ndarray, parameters: dict[str, any], rng: Generator):
+    """unique splits for different iterations"""
+    children = rng.bit_generator._seed_seq.spawn(2*parameters['ntree'])
+    ss_f1 = children[:parameters['ntree']]
+    ss_f2 = children[parameters['ntree']:2*parameters['ntree']]
+
     subjects_count, _ = train_data.shape
     is_continuous_data = is_continuous(train_data[:, 1:])
     train_data = np.hstack(
@@ -124,7 +131,7 @@ def crf_v1(train_data: np.ndarray, parameters: dict[str, any]):
         batch_size="auto"
     )(
         delayed(build_crf_results_iter)(
-            train_data, is_continuous_data, 1
+            train_data, is_continuous_data, 1, ss_f1[_]
         )
         for _ in range(parameters['ntree'])
     )
@@ -135,7 +142,7 @@ def crf_v1(train_data: np.ndarray, parameters: dict[str, any]):
         batch_size="auto"
     )(
         delayed(build_crf_results_iter)(
-            train_data, is_continuous_data, 2
+            train_data, is_continuous_data, 2, ss_f2[_]
         )
         for _ in range(parameters['ntree'])
     )

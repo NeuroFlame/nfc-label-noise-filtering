@@ -10,12 +10,13 @@ def build_crf(
 ):
     if data.size == 0:
         raise ValueError("The data is empty")
-    
+
     subjects, features = data.shape
 
     if subjects < 2:
         value = NodeValues()
-        value.datas = np.array(data[0, -1]).astype(int)  # id of the last subject
+        # id of the last subject
+        value.datas = np.array(data[0, -1]).astype(int)
         value.labels = [int(data[0, 0]), *up_labels]
         new_node = Node(value)
         return new_node
@@ -54,11 +55,13 @@ def build_crf(
             new_node = Node(value)
 
             left_value = NodeValues()
-            left_value.datas = data[data[:, 0] == unique_labels[0], -1].astype(int)
+            left_value.datas = data[data[:, 0] ==
+                                    unique_labels[0], -1].astype(int)
             left_value.labels = [int(unique_labels[0]), *up_labels]
 
             right_value = NodeValues()
-            right_value.datas = data[data[:, 0] == unique_labels[1], -1].astype(int)
+            right_value.datas = data[data[:, 0] ==
+                                     unique_labels[1], -1].astype(int)
             right_value.labels = [int(unique_labels[1]), *up_labels]
 
             left_node = Node(left_value)
@@ -87,7 +90,7 @@ def build_crf(
         perm = np.random.permutation(len(unique_subjects_classes))
         best_value = unique_subjects_classes[perm[0]]
 
-        left_data  = data[col == best_value, :]
+        left_data = data[col == best_value, :]
         right_data = data[col != best_value, :]
 
     value = NodeValues()
@@ -95,7 +98,9 @@ def build_crf(
     max_freq_labels = node_label(data, flag, up_labels)
     value.labels = [int(max_freq_labels), *up_labels]
     new_node = Node(value)
-    new_node.left_node = build_crf(left_data, is_continous_data, value.labels, flag)
-    new_node.right_node = build_crf(right_data, is_continous_data, value.labels, flag)
+    new_node.left_node = build_crf(
+        left_data, is_continous_data, value.labels, flag)
+    new_node.right_node = build_crf(
+        right_data, is_continous_data, value.labels, flag)
 
     return new_node

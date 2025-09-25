@@ -1,10 +1,12 @@
 from typing import Any, Optional
 
+
 def _get(obj: Any, name: str, default: Optional[Any] = None):
     """Dict-or-attr getter."""
     if isinstance(obj, dict):
         return obj.get(name, default)
     return getattr(obj, name, default)
+
 
 def _get_value(obj: Any):
     """Return the node's value payload (dict or object) under 'values' or 'value'."""
@@ -12,6 +14,7 @@ def _get_value(obj: Any):
     if v is None:
         v = _get(obj, "value", None)
     return v
+
 
 def _get_child(node: Any, left: bool):
     """Return left or right child supporting multiple field names."""
@@ -23,6 +26,7 @@ def _get_child(node: Any, left: bool):
         return (_get(node, "right_node")
                 or _get(node, "rightLeaf")
                 or _get(node, "right"))
+
 
 def log_tree(root: Any, indent: int = 0, path: str = "•", _seen=None):
     """

@@ -5,6 +5,7 @@ from . import crf_helpers as helper
 
 from joblib import Parallel, delayed
 
+
 class CRF:
     def __init__(self, ntree: int, label_noise_threshold: int):
         self.rf_1 = []
@@ -21,29 +22,29 @@ class CRF:
 
         # final_output_1= np.empty(ntree, dtype=np.ndarray)
         # final_output_2= np.empty(ntree, dtype=np.ndarray)
-        
+
         final_output_1 = Parallel(
-                n_jobs=8,
-                prefer="processes",
-                batch_size="auto"
+            n_jobs=8,
+            prefer="processes",
+            batch_size="auto"
         )(
             delayed(crf.build_crf_results_iter)(
                 train_data, is_continuous_data, 1
             )
             for _ in range(ntree)
         )
-        
+
         final_output_2 = Parallel(
-                n_jobs=8,
-                prefer="processes",
-                batch_size="auto"
+            n_jobs=8,
+            prefer="processes",
+            batch_size="auto"
         )(
             delayed(crf.build_crf_results_iter)(
                 train_data, is_continuous_data, 2
             )
             for _ in range(ntree)
         )
-        
+
         # for i in range(ntree):
         #     final_output_1[i] = crf.build_crf_results_iter(train_data, is_continuous_data, 1)
         #     final_output_2[i] = crf.build_crf_results_iter(train_data, is_continuous_data, 2)
@@ -53,8 +54,10 @@ class CRF:
 
         final_decisions = np.hstack([final_output_1, final_output_2])
 
-        final_decisions[final_decisions < self.label_noise_threshold] = 0 # non-noise
-        final_decisions[final_decisions >= self.label_noise_threshold] = 1 # noise
+        final_decisions[final_decisions <
+                        self.label_noise_threshold] = 0  # non-noise
+        final_decisions[final_decisions >=
+                        self.label_noise_threshold] = 1  # noise
 
         noise_subjects = (final_decisions.sum(axis=1) > 0.5 * ntree * 2).astype(
             int

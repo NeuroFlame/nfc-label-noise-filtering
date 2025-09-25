@@ -2,14 +2,15 @@ import numpy as np
 from scipy.spatial.distance import pdist
 from .node_definition import Node
 
+
 def is_continuous(data: np.ndarray) -> np.ndarray:
     """
     Determine if each column in the dataset is continuous.
     A column is considered continuous if it has more than 1/3 unique values.
-    
+
     Parameters:
     - data: 2D NumPy array of shape (m, n)
-    
+
     Returns:
     - is_conti: 1D NumPy array of shape (n,), with 1 for continuous, 0 otherwise
     """
@@ -24,6 +25,7 @@ def is_continuous(data: np.ndarray) -> np.ndarray:
 
     return is_conti
 
+
 def otsu4_thres(array: np.ndarray):
     """
     Python port of MATLAB Otsu4Thres.
@@ -35,7 +37,8 @@ def otsu4_thres(array: np.ndarray):
     """
     arr = np.asarray(array).ravel()
     n = arr.size
-    fun = np.full(n, -np.inf, dtype=float)  # sentinel so empty-group splits aren't chosen
+    # sentinel so empty-group splits aren't chosen
+    fun = np.full(n, -np.inf, dtype=float)
 
     for v in range(n):
         te = arr[v]
@@ -49,13 +52,16 @@ def otsu4_thres(array: np.ndarray):
 
         mean_n1 = g1.mean()
         mean_n2 = g2.mean()
-        agg_mean = size_n1 * mean_n1 + size_n2 * mean_n2  # NOTE: mirrors your MATLAB (not normalized)
+        # NOTE: mirrors your MATLAB (not normalized)
+        agg_mean = size_n1 * mean_n1 + size_n2 * mean_n2
 
-        fun[v] = size_n1 * (mean_n1 - agg_mean) ** 2 + size_n2 * (mean_n2 - agg_mean) ** 2  # between-class variance score
+        fun[v] = size_n1 * (mean_n1 - agg_mean) ** 2 + size_n2 * \
+            (mean_n2 - agg_mean) ** 2  # between-class variance score
 
     fea_id = int(np.argmax(fun))
     thres = arr[fea_id]
     return fea_id, thres
+
 
 def parallel_sort(frequency: np.ndarray) -> np.ndarray:
     """
@@ -70,6 +76,7 @@ def parallel_sort(frequency: np.ndarray) -> np.ndarray:
         return np.array([], dtype=int)
     max_val = np.max(freq)
     return np.flatnonzero(freq == max_val)
+
 
 def _mean_pdist(data: np.ndarray) -> float:
     """
@@ -87,6 +94,7 @@ def _mean_pdist(data: np.ndarray) -> float:
     dists = np.sqrt(np.maximum(sq_dists[iu], 0.0))
     return float(dists.mean())
 
+
 def node_label(data: np.ndarray, flag: int, up_labels: list) -> int:
     """
     Input:
@@ -100,15 +108,18 @@ def node_label(data: np.ndarray, flag: int, up_labels: list) -> int:
     labels_col = data[:, 0]
 
     # --- tabulate + sort by frequency DESC (tie-break by label ASC, like sortrows(...,-2)) ---
-    uniq_vals, counts = np.unique(labels_col, return_counts=True)  # uniq_vals ascending
+    uniq_vals, counts = np.unique(
+        labels_col, return_counts=True)  # uniq_vals ascending
     # Stable sort by -counts; because uniq_vals is ascending, ties remain in ascending label order.
     order = np.argsort(-counts, kind="mergesort")
     sorted_vals = uniq_vals[order]
     sorted_cnts = counts[order]
 
     # --- find the set of labels tied at the TOP frequency ---
-    top_idx = parallel_sort(sorted_cnts)  # indices into sorted arrays where count == max
-    rank_top = sorted_vals[top_idx]       # the label values tied for most frequent
+    # indices into sorted arrays where count == max
+    top_idx = parallel_sort(sorted_cnts)
+    # the label values tied for most frequent
+    rank_top = sorted_vals[top_idx]
     rank_top_num = rank_top.size
 
     if rank_top_num == 1:
@@ -149,6 +160,7 @@ def node_label(data: np.ndarray, flag: int, up_labels: list) -> int:
     # then by ascending label). You can adjust this to your needs.
     return rank_top[0]
 
+
 def check_label_sequence(labels) -> int:
     n = len(labels)
     if n < 2:
@@ -166,6 +178,7 @@ def check_label_sequence(labels) -> int:
         if labels[j] != labels[j + 1]:
             return j - ch1
     return (n - 1) - ch1
+
 
 def check_tree_leaf(sr_tree: Node) -> np.ndarray:
     """

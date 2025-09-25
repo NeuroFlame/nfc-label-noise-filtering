@@ -180,9 +180,9 @@ A = DisTypicalGroup1./(Distance);
 B = DisTypicalGroup2./(Distance);
 Scores = tan((A-B)*pi/2);
 
-Selected_Features = sort(Fea(:));
-Center_SZ = Center1(:);
-Center_HC = Center2(:);
+Selected_Features = Fea;
+Center_SZ = Center1;
+Center_HC = Center2;
 
 save(strcat(SavePath, MainDataName, '_Centers.mat'), 'Center_SZ', 'Center_HC', 'Selected_Features')
 
