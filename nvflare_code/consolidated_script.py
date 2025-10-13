@@ -2,16 +2,17 @@ import os
 import numpy as np
 import pandas as pd
 import random
+
+from numpy import ndarray
 from scipy.spatial.distance import cdist
 
 from crf import crf
-from nvflare_code.types import Centroids, HeatMapOptions
+from types_def import Centroids, HeatMapOptions
 from utils import utils
 from utils import find_scores
 from utils import data_loaders
 
 from numpy.random import SeedSequence, PCG64, Generator
-
 
 # PARAMETERS
 SamplingThs = 0.7
@@ -28,6 +29,7 @@ parameters = {
     'typical_threshold': TypThs
 }
 
+group_names = { 1: 'SZ', 2: 'HC'}
 
 # INPUTSPEC VALUES
 BASE_INPUT_DATA = "test_data/{site}"
@@ -59,10 +61,14 @@ def perform_local_step_1(site_name: str, data_path: str, output_path: str, rng: 
 
     data = utils.convert_fnc_to_features(original_dataset, output_path, site_name)
 
-    ### Get Two Sample ttest of Original labels:
+    # data_path = os.path.join(output_path, f'{site_name}.mat')
+    # data = data_loaders.load_result_matfile(data_path)[site_name]
+
     X = original_dataset[utils.SourceDataKeys.SFNC.value]
     y = data[:, -1]
-    t_values, p_values = utils.computer_two_sample_ttest(X, y)
+
+    """ Two Sample ttest of Original labels: """
+    t_values, p_values = utils.compute_two_sample_ttest(X, y)
 
     corrected_t_values = utils.upper_triangle_bonferroni(t_values, p_values)
 
@@ -77,13 +83,18 @@ def perform_local_step_1(site_name: str, data_path: str, output_path: str, rng: 
         }
     )
 
+    """ Average FNC matrix """
+    unique_labels = np.unique(y).astype(int) # TODO: Need to replace with configurations
+    avg_fnc, aggregated_fnc_result = utils.average_fnc_by_label(X, y, unique_labels)
 
-    EXECUTOR_CACHE[site_name] = {
-        'data': data
-    }
-
-    # data_path = os.path.join(output_path, f'{site_name}.mat')
-    # data = data_loaders.load_result_matfile(data_path)[site_name]
+    for label in unique_labels:
+        utils.fnc_heatmap(avg_fnc[label], {
+            'colorbar_name' : "Avg FNC Values",
+            'title': f'Average FNC of Original {group_names[label]} Subjects',
+            'path': output_path,
+            'name': f'local_original_avg_fnc_{group_names[label]}.png',
+            'domain_names': [0,5,7,16,25,42,49,53],
+        })
 
     subject_noise_counts = crf.perform_crf(
         data, output_path, site_name, parameters, rng=rng)
@@ -96,8 +107,15 @@ def perform_local_step_1(site_name: str, data_path: str, output_path: str, rng: 
 
     selected_features_file = os.path.join(output_path, 'centers.npz')
     np.savez(selected_features_file, **centroids)
-    return centroids
 
+    EXECUTOR_CACHE[site_name] = {
+        'data': data
+    }
+
+    return {
+        'centroids': centroids,
+        'aggregated_fnc_result': aggregated_fnc_result
+    }
 
 def perform_local_step_2(site_name: str, site_results: dict[str, Centroids], output_path: str):
     """
@@ -146,13 +164,41 @@ def perform_local_step_2(site_name: str, site_results: dict[str, Centroids], out
 
     return np.array(site_scores['average'])
 
-def perform_remote_step_1(site_results: dict[str, Centroids]):
+def perform_remote_step_1(site_results: dict[str, any], output_path: str):
     """
     Collect the n models from all the sites, then sent to all sites
     :param site_results: Description
     :type site_results: dict[str, any]
     """
 
+    site_centroids: dict[str, Centroids] = {}
+    global_avg_per_label = {
+        1: [],
+        2: []
+    }
+
+    for site in site_results:
+        site_centroids[site] = site_results[site]['centroids']
+
+        for label in (1,2):
+            global_avg_per_label[label].append(site_results[site]['aggregated_fnc_result'][label])
+
+    # print(len(global_avg_per_label[1]), len(global_avg_per_label[2]))
+
+    global_result_path = os.path.join(output_path, 'global_results')
+    os.makedirs(global_result_path, exist_ok=True)
+
+    global_avg_fnc = utils.global_mean_from_sites(global_avg_per_label)
+    for label in (1,2):
+        utils.fnc_heatmap(global_avg_fnc[label], {
+            'colorbar_name': 'Avg FNC Values',
+            'title': f'Average FNC of Original {group_names[label]} Subjects',
+            'path': global_result_path,
+            'name': f'global_original_avg_fnc_{group_names[label]}.png',
+            'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
+        })
+
+    return site_centroids
 
 def perform_remote_step_2(site_results: dict[str, np.ndarray]):
     """
@@ -212,12 +258,34 @@ def perform_remote_step_2(site_results: dict[str, np.ndarray]):
     
     return t
 
+def perform_remote_step_3(site_results: dict[str, np.ndarray], output_path: str):
+    global_avg_per_label = {
+        1: [],
+        2: []
+    }
+
+    for site in site_results:
+        for label in (1,2):
+            global_avg_per_label[label].append(site_results[site][label])
+
+    global_result_path = os.path.join(output_path, 'global_results')
+    os.makedirs(global_result_path, exist_ok=True)
+
+    global_avg_fnc = utils.global_mean_from_sites(global_avg_per_label)
+    for label in (1,2):
+        utils.fnc_heatmap(global_avg_fnc[label], {
+            'colorbar_name': 'Avg FNC Values',
+            'title': f'Average FNC of Relabeled {group_names[label]} Subjects',
+            'path': global_result_path,
+            'name': f'global_relabeled_avg_fnc_{group_names[label]}.png',
+            'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
+        })
 
 def perform_local_step_3(site: str, data_path: str, output_path: str, adaptive_score):
     """
     Compute Relabeled for every subject
     """
-    scores_path = os.path.join(output_path, f'{site}_scores.csv')
+    scores_path = os.path.join(output_path, f'{site}.csv')
     scores_df = pd.read_csv(scores_path)
 
     total_subjects = scores_df.shape[0]
@@ -240,7 +308,7 @@ def perform_local_step_3(site: str, data_path: str, output_path: str, adaptive_s
         ],
     )
     X = original_dataset[utils.SourceDataKeys.SFNC.value]
-    t_values, p_values = utils.computer_two_sample_ttest(X, re_labels)
+    t_values, p_values = utils.compute_two_sample_ttest(X, re_labels)
     corrected_t_values = utils.upper_triangle_bonferroni(t_values, p_values)
     utils.fnc_heatmap(
         corrected_t_values,
@@ -252,6 +320,23 @@ def perform_local_step_3(site: str, data_path: str, output_path: str, adaptive_s
             'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
         }
     )
+
+    """ Avg FNC Matrix of Relabeled Subjects """
+    unique_labels = np.unique(re_labels).astype(int)
+    avg_fnc, relabeled_aggregated_fnc_result = utils.average_fnc_by_label(X, re_labels, unique_labels)
+
+    for label in unique_labels:
+        if label == -1:
+            continue
+        utils.fnc_heatmap(avg_fnc[label], {
+            'colorbar_name' : "Avg FNC Values",
+            'title': f'Average FNC of Original {group_names[label]} Subjects',
+            'path': output_path,
+            'name': f'local_original_avg_fnc_{group_names[label]}.png',
+            'domain_names': [0,5,7,16,25,42,49,53],
+        })
+
+    return relabeled_aggregated_fnc_result
 
 def run_federated_de_noise(round_id: int):
 
@@ -275,26 +360,28 @@ def run_federated_de_noise(round_id: int):
         site_results[site] = perform_local_step_1(
             site, base_path, output_path, rng=rng_round)
 
-    # agg_results = perform_remote_step_1(site_results)
+    agg_results = perform_remote_step_1(site_results, "test_output/round_5")
 
     score_site_results: dict[str, np.ndarray] = {}
     for site in sites:
         output_path = BASE_OUTPUT_DIR.format(number=round_id, site=site)
         score_site_results[site] = perform_local_step_2(
             site,
-            site_results,
+            agg_results,
             output_path
         )
 
     adaptive_score = perform_remote_step_2(score_site_results)
+    print(adaptive_score)
 
+    site_avg_fnc_data = {}
     for site in sites:
         base_path = BASE_INPUT_DATA.format(site=site)
         output_path = BASE_OUTPUT_DIR.format(number=round_id, site=site)
-        perform_local_step_3(site, base_path, output_path, adaptive_score)
+        site_avg_fnc_data[site] = perform_local_step_3(site, base_path, output_path, adaptive_score)
+    perform_remote_step_3(site_avg_fnc_data, "test_output/round_5")
 
-
-CURRENT_EXECUTION_ID = int(os.environ.get("SLURM_ARRAY_TASK_ID", "0"))
+CURRENT_EXECUTION_ID = int(os.environ.get("SLURM_ARRAY_TASK_ID", "5"))
 
 if CURRENT_EXECUTION_ID == 0:
     raise Exception("Failed to get execution id")

@@ -1,18 +1,14 @@
 import os
-import numpy as np
 from enum import Enum
 
-from numpy import ndarray
 import matplotlib.pyplot as plt
-
+import numpy as np
+from numpy import ndarray
+from scipy.io import savemat
 from scipy.stats import ttest_ind
 
-from typing import NotRequired, TypedDict, Unpack
+from nvflare_code.types_def import HeatMapOptions
 
-from .data_loaders import load_data_matfile
-from scipy.io import savemat
-
-from nvflare_code.types import HeatMapOptions
 
 class SourceDataKeys(Enum):
     """
@@ -113,7 +109,7 @@ def fnc_heatmap(fnc_matrix: np.ndarray, options: HeatMapOptions):
     output_filename = os.path.join(output_path, name)
 
     plt.savefig(output_filename)
-    plt.show()
+    # plt.show()
 
 
 def upper_triangle_bonferroni(t_values: np.ndarray, p_values: np.ndarray, alpha=0.01):
@@ -144,7 +140,7 @@ def split_dataset(dataset: np.ndarray, labels: np.ndarray) -> tuple[ndarray, nda
 
     return group_sz, group_hc
 
-def computer_two_sample_ttest(dataset: np.ndarray, labels12=None):
+def compute_two_sample_ttest(dataset: np.ndarray, labels12=None):
     """
     dataset: np.ndarray of shape (N, 53, 53)  -- FNC per subject
     labels12: np.ndarray of shape (N) with values in {1,2,-1}
@@ -159,3 +155,97 @@ def computer_two_sample_ttest(dataset: np.ndarray, labels12=None):
     t_values, p_values = ttest_ind(group_hc, group_sz, axis=0, equal_var=False, nan_policy="omit") # HC Vs SZ
 
     return t_values, p_values # 53x53
+
+
+def find_sum_count_fnc(X: np.ndarray, clip: int = 1-1e-7):
+    """
+    X: shape (n_g, 53, 53) for one site & one group (HC or SZ), correlations in [-1,1].
+    Returns edge-wise Fisher-z SUM and COUNT (and optional SUMSQ for variance if needed).
+    """
+    n, p, _ = X.shape
+
+    clipped_data = np.clip(X, -clip, clip) # ranging values from -x to x
+    z_transformed = np.arctanh(clipped_data) # Fisher Z transformed
+
+    diag = np.arange(p)
+    z_transformed[:, diag, diag] = 0.0
+
+    """ 
+        S = X[0] + X[1] + X[2] + .... + X[n] 
+        sum of each matrix (53x53)
+        
+        C = for each S[i][j] no.of X[i] matrix X[i][j] not NaN
+    """
+    aggregated_sum_matrix = np.nansum(z_transformed, axis=0)          # (p, p)
+    total_count = np.sum(~np.isnan(z_transformed), axis=0)  # (p, p)
+
+    ## Local Mean:
+    z_transformed_mean = np.nanmean(z_transformed, axis=0)
+
+    # Back-transform to r-space
+    inv_z_transformed = np.tanh(z_transformed_mean)
+
+    # Housekeeping
+    inv_z_transformed = (inv_z_transformed + inv_z_transformed.T) / 2.0
+    np.fill_diagonal(inv_z_transformed, 1.0)
+    return {"sum": aggregated_sum_matrix, "count": total_count, "avg_fnc": inv_z_transformed}
+
+
+def average_fnc_by_label(
+        X: np.ndarray,  # shape: (N, 53, 53), correlations in [-1,1]
+        y: np.ndarray,  # shape: (N,), labels in {1,2}
+        labels: np.ndarray,  # which labels to compute
+) -> tuple[dict[int, ndarray], dict[int, dict[str, any]]]:
+    """
+    Returns: dict {label: avg_matrix} with each avg_matrix shape (53, 53).
+    Steps: Fisher z per subject -> element-wise mean in z -> tanh back to r.
+    Uses np.nanmean so any NaNs in X are ignored.
+    """
+    assert X.ndim == 3 and X.shape[1] == X.shape[2] == 53, "X must be (N,53,53)"
+    assert y.shape[0] == X.shape[0], "y must align with X"
+
+    avg_fnc = {}
+    local_sum_count = {}
+
+    for lbl in labels:
+        idx = (y == lbl)
+
+        if not np.any(idx):
+            raise ValueError(f"No subjects with label {lbl}")
+
+        local_mean_data = find_sum_count_fnc(X[idx])
+
+        avg_fnc[lbl] = local_mean_data['avg_fnc']
+        local_sum_count[lbl] = {'sum': local_mean_data['sum'], 'count': local_mean_data['count']}
+
+    return avg_fnc, local_sum_count
+
+
+def global_mean_from_sites(site_packets: dict):
+    """
+    site_packets: list of dicts returned by site_stats_z for the SAME group.
+    Supports either upper-triangle or full-matrix mode (must match across sites).
+    Returns global average correlation matrix (p,p) for that group.
+    """
+    print('Global: ')
+
+    result = {}
+    for label in (1, 2):
+        aggregated_sum = np.zeros((53, 53), dtype=float)
+        aggregated_total = np.zeros((53, 53), dtype=float)
+
+        print(" label: ", label, "  count: ", len(site_packets[label]))
+
+        for pkt in site_packets[label]:
+            aggregated_sum += pkt["sum"]
+            aggregated_total += pkt["count"]
+
+        avg_fnc = np.divide(aggregated_sum, aggregated_total, out=np.zeros_like(aggregated_sum), where=aggregated_total > 0)
+
+        inverse_avg_fnc = np.tanh(avg_fnc)
+        inverse_avg_fnc = (inverse_avg_fnc + inverse_avg_fnc.T) / 2.0
+        np.fill_diagonal(inverse_avg_fnc, 1.0)
+
+        result[label] = inverse_avg_fnc
+
+    return result

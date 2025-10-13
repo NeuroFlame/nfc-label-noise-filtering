@@ -1,5 +1,6 @@
-from typing import TypedDict, NotRequired, Unpack
+from typing import TypedDict
 import numpy as np
+from typing_extensions import NotRequired
 
 class Centroids(TypedDict):
     center_sz: np.ndarray
