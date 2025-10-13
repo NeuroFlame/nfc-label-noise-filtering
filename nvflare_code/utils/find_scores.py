@@ -2,6 +2,8 @@ import numpy as np
 from scipy import stats
 from scipy.spatial.distance import cdist
 from .utils import find_typical_subjects
+from ..types import Centroids
+
 
 # cummulative feature selection using Bonferroni corrected threshold 0.01/(Col-1)
 
@@ -72,7 +74,7 @@ def get_centroids(
     subject_data: np.ndarray,
     subject_label_count: np.ndarray,
     typical_threshold: float,
-):
+) -> Centroids:
 
     col = subject_data.shape[1]
     typ_hc, typ_sz = find_typical_subjects(
@@ -92,9 +94,9 @@ def get_centroids(
         p_val, significant_threshold)
     # print('selected features: ', selected_features)
 
-    center_sz = np.mean(
+    center_sz: np.ndarray = np.mean(
         typical_sz_data[:, selected_features], axis=0).reshape(1, -1)
-    center_hc = np.mean(
+    center_hc: np.ndarray = np.mean(
         typical_hc_data[:, selected_features], axis=0).reshape(1, -1)
 
     return {
