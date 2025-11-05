@@ -330,9 +330,9 @@ def perform_local_step_3(site: str, data_path: str, output_path: str, adaptive_s
             continue
         utils.fnc_heatmap(avg_fnc[label], {
             'colorbar_name' : "Avg FNC Values",
-            'title': f'Average FNC of Original {group_names[label]} Subjects',
+            'title': f'Average FNC of Relabeled {group_names[label]} Subjects',
             'path': output_path,
-            'name': f'local_original_avg_fnc_{group_names[label]}.png',
+            'name': f'local_relabeled_avg_fnc_{group_names[label]}.png',
             'domain_names': [0,5,7,16,25,42,49,53],
         })
 

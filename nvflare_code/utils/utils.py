@@ -8,7 +8,8 @@ from scipy.io import savemat
 from scipy.stats import ttest_ind
 
 from nvflare_code.types_def import HeatMapOptions
-
+import h5py
+import time
 
 class SourceDataKeys(Enum):
     """
@@ -249,3 +250,58 @@ def global_mean_from_sites(site_packets: dict):
         result[label] = inverse_avg_fnc
 
     return result
+
+def save_fnc_h5(filepath: str, fnc: np.ndarray, space: str = "z"):
+    """
+    Save a plain FNC matrix (N x N) or a stack (S x N x N) to an HDF5 file.
+
+    Args:
+        filepath: Output path ending with .h5 or .hdf5
+        fnc: np.ndarray of shape (N, N) or (S, N, N); dtype will be float32 on disk
+        space: "z" or "r" (optional metadata to indicate Fisher-z or correlation r)
+        labels: optional list/array of length N with region/component names
+    """
+    fnc = np.asarray(fnc)
+    if fnc.ndim == 2:
+        N = fnc.shape[0]
+        if fnc.shape[1] != N:
+            raise ValueError("FNC must be square (N x N).")
+    elif fnc.ndim == 3:
+        S, N, N2 = fnc.shape
+        if N2 != N:
+            raise ValueError("FNC stack must be (S x N x N).")
+    else:
+        raise ValueError("FNC must be 2D (N x N) or 3D (S x N x N).")
+
+    # Save
+    with h5py.File(filepath, "w") as f:
+        # Minimal metadata
+        f.attrs["created_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        f.attrs["schema_version"] = "1.0"
+        f.attrs["space"] = space  # "z" for Fisher-z, "r" for Pearson r
+
+        # Main dataset: /fnc
+        dset = f.create_dataset(
+            "fnc",
+            data=fnc.astype(np.float32, copy=False),
+            compression="gzip",
+            chunks=True  # let h5py pick reasonable chunk sizes
+        )
+        dset.attrs["shape_kind"] = "NxN" if fnc.ndim == 2 else "SxNxN"
+        dset.attrs["dtype"] = "float32"
+
+def load_fnc_h5(filepath: str):
+    """
+    Load FNC and (optional) labels back from the HDF5 file.
+    Returns:
+        fnc (np.ndarray), meta (dict)
+    """
+    with h5py.File(filepath, "r") as f:
+        fnc = f["fnc"][...]  # np.ndarray
+        meta = {
+            "created_utc": f.attrs.get("created_utc", None),
+            "schema_version": f.attrs.get("schema_version", None),
+            "space": f.attrs.get("space", None),
+            "shape_kind": f["fnc"].attrs.get("shape_kind", None),
+        }
+    return fnc, meta
