@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.spatial.distance import pdist
-import numpy as np
 
 
 class NodeValues:

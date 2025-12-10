@@ -4,3 +4,5 @@ pandas
 matplotlib
 scikit-learn
 typing-extensions
+nvflare==2.4.0
+h5py

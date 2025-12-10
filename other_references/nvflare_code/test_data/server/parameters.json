@@ -1,0 +1,13 @@
+{
+  "SamplingThs": 0.7,
+  "CrfIterations": 101,
+  "CrfTrees": 201,
+  "NoiseIntensityThs": 2,
+  "TypicalThs": 0.8,
+  "TruncationParameter": 0.2,
+  "Labels": {
+    "1": "SZ",
+    "2": "HC"
+  },
+  "LogLevel": "debug"
+}

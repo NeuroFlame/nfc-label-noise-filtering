@@ -5,6 +5,8 @@ from joblib import Parallel, delayed
 from numpy.random import Generator
 from scipy.stats import zscore
 from scipy.io import savemat
+from typing import Dict
+
 # from ..src.data_loaders import load_result_matfile
 
 from .iterative_crf import build_crf_results_iter
@@ -15,11 +17,11 @@ def perform_crf(
     dataset: np.ndarray,
     result_path: str,
     name: str,
-    parameters: dict[str, any],
+    parameters: Dict[str, any],
     rng: Generator
 ):
     """
-    consisting of subjects with there features as columns
+    consisting of subjects with their features as columns
     last column is label of the subject
     """
 
@@ -110,7 +112,7 @@ def perform_crf(
     return final_mat
 
 
-def crf_v1(train_data: np.ndarray, parameters: dict[str, any], rng: Generator):
+def crf_v1(train_data: np.ndarray, parameters: Dict[str, any], rng: Generator):
     """unique splits for different iterations"""
     children = rng.bit_generator._seed_seq.spawn(2*parameters['ntree'])
     ss_f1 = children[:parameters['ntree']]

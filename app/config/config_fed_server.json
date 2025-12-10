@@ -1,0 +1,22 @@
+{
+  "format_version": 2,
+  "server": {
+    "heart_beat_timeout": 600
+  },
+  "task_data_filters": [],
+  "task_result_filters": [],
+  "components": [
+    {
+      "id": "denoise_aggregator",
+      "path": "aggregator.aggregator.DeNoiseAggregator",
+      "args": {}
+    }
+  ],
+  "workflows": [
+    {
+      "id": "denoise_controller",
+      "path": "controller.controller.DeNoiseController",
+      "args": {}
+    }
+  ]
+}

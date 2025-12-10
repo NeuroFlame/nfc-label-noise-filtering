@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "executors": [
+    {
+      "tasks": [
+
+      ],
+      "executor": {
+        "path": "executor.executor.DeNoiseExecutor",
+        "args": {}
+      }
+    }
+  ],
+  "task_result_filters": [],
+  "task_data_filters": [],
+  "components": []
+}

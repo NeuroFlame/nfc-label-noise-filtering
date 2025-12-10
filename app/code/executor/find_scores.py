@@ -1,20 +1,18 @@
 import numpy as np
 from scipy import stats
 from scipy.spatial.distance import cdist
-from .utils import find_typical_subjects
-from nvflare_code.types_def import Centroids
+from .local_ancillary import find_typical_subjects
+from utils.types import Centroids
 
 
 # cummulative feature selection using Bonferroni corrected threshold 0.01/(Col-1)
-
-
-def cumulative_features_selection(Pval, PvalPara):
+def cumulative_features_selection(pval, pvalPara):
     # Pval: 1-D array of p-values
-    FeaInd = np.argsort(Pval)                  # indices sorted by p-value
-    SortPval = Pval[FeaInd]                    # sorted p-values
+    FeaInd = np.argsort(pval)                  # indices sorted by p-value
+    SortPval = pval[FeaInd]                    # sorted p-values
 
     # Find first index where p-value exceeds threshold
-    above_thresh = np.where(SortPval > PvalPara)[0]
+    above_thresh = np.where(SortPval > pvalPara)[0]
     if above_thresh.size > 0:
         ind = above_thresh[0]                  # first index above threshold
     else:

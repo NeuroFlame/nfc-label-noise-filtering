@@ -1,28 +1,19 @@
 import os
 from enum import Enum
 
+from typing import Dict, List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import ndarray
 from scipy.io import savemat
 from scipy.stats import ttest_ind
+from typing import Dict
 
-from nvflare_code.types_def import HeatMapOptions
+from utils.types import HeatMapOptions, SourceDataKeys
 import h5py
 import time
 
-class SourceDataKeys(Enum):
-    """
-    Enum to represent different keys in the original mat file.
-    """
-    FILE_ID = 'FILE_ID'
-    ANALYSIS_ID = 'analysis_ID'
-    ANALYSIS_SCORE = 'analysis_SCORE'
-    SFNC = 'sFNC'
-
-
 def convert_fnc_to_features(original_dataset, dest_path: str, name: str):
-
     # --- find diagnosis column (case-insensitive) ---
     file_ids = original_dataset[SourceDataKeys.FILE_ID.value]
     label_index = next(
@@ -41,10 +32,10 @@ def convert_fnc_to_features(original_dataset, dest_path: str, name: str):
     # --- build the lower-triangle mask excluding diagonal (k=-1) ---
     mask = np.tril(np.ones((P, P), dtype=bool), k=-1)  # P x P
 
-    linear_idx = np.where(mask.ravel(order='F'))[0]           # size: P*(P-1)/2
-    fnc_flat_F = fnc_matrices.reshape(N, P * P, order='F')    # N x (P*P)
+    linear_idx = np.where(mask.ravel(order='F'))[0]  # size: P*(P-1)/2
+    fnc_flat_F = fnc_matrices.reshape(N, P * P, order='F')  # N x (P*P)
 
-    source_data = fnc_flat_F[:, linear_idx]                   # N x (P*(P-1)/2)
+    source_data = fnc_flat_F[:, linear_idx]  # N x (P*(P-1)/2)
 
     # append labels as the last column
     out = np.hstack([source_data, labels])
@@ -57,11 +48,10 @@ def convert_fnc_to_features(original_dataset, dest_path: str, name: str):
 
 
 def find_typical_subjects(
-    original_labels: np.ndarray,
-    label_count: np.ndarray,
-    typical_threshold: float,
-) -> tuple[ndarray, ndarray]:
-
+        original_labels: np.ndarray,
+        label_count: np.ndarray,
+        typical_threshold: float,
+) -> Tuple[ndarray, ndarray]:
     label_count[:, 3] = np.round(label_count[:, 3], 1)
     print(len(original_labels), len(label_count))
 
@@ -99,10 +89,11 @@ def fnc_heatmap(fnc_matrix: np.ndarray, options: HeatMapOptions):
     # Optional domain gridlines (edit to your atlas boundaries)
     if domain_breaks:
         for g in domain_breaks:
-            ax.axhline(g-0.5, color='k', lw=0.6)
-            ax.axvline(g-0.5, color='k', lw=0.6)
+            ax.axhline(g - 0.5, color='k', lw=0.6)
+            ax.axvline(g - 0.5, color='k', lw=0.6)
 
-    ax.set_xticks([]); ax.set_yticks([])
+    ax.set_xticks([]);
+    ax.set_yticks([])
     if title:
         ax.set_title(title)
     plt.tight_layout()
@@ -129,7 +120,7 @@ def upper_triangle_bonferroni(t_values: np.ndarray, p_values: np.ndarray, alpha=
     return t_matrix
 
 
-def split_dataset(dataset: np.ndarray, labels: np.ndarray) -> tuple[ndarray, ndarray]:
+def split_dataset(dataset: np.ndarray, labels: np.ndarray) -> Tuple[ndarray, ndarray]:
     assert dataset.ndim == 3 and dataset.shape[1:] == (53, 53), "A53 must be (N,53,53)"
     labels12 = np.asarray(labels).reshape(-1)
 
@@ -140,6 +131,7 @@ def split_dataset(dataset: np.ndarray, labels: np.ndarray) -> tuple[ndarray, nda
     group_hc = dataset[labels12 == 2]  # HC
 
     return group_sz, group_hc
+
 
 def compute_two_sample_ttest(dataset: np.ndarray, labels12=None):
     """
@@ -153,20 +145,20 @@ def compute_two_sample_ttest(dataset: np.ndarray, labels12=None):
         raise ValueError("Both groups need at least one subject.")
 
     # Welch t-test per cell (across subjects)
-    t_values, p_values = ttest_ind(group_hc, group_sz, axis=0, equal_var=False, nan_policy="omit") # HC Vs SZ
+    t_values, p_values = ttest_ind(group_hc, group_sz, axis=0, equal_var=False, nan_policy="omit")  # HC Vs SZ
 
-    return t_values, p_values # 53x53
+    return t_values, p_values  # 53x53
 
 
-def find_sum_count_fnc(X: np.ndarray, clip: int = 1-1e-7):
+def find_sum_count_fnc(X: np.ndarray, clip: int = 1 - 1e-7):
     """
     X: shape (n_g, 53, 53) for one site & one group (HC or SZ), correlations in [-1,1].
     Returns edge-wise Fisher-z SUM and COUNT (and optional SUMSQ for variance if needed).
     """
     n, p, _ = X.shape
 
-    clipped_data = np.clip(X, -clip, clip) # ranging values from -x to x
-    z_transformed = np.arctanh(clipped_data) # Fisher Z transformed
+    clipped_data = np.clip(X, -clip, clip)  # ranging values from -x to x
+    z_transformed = np.arctanh(clipped_data)  # Fisher Z transformed
 
     diag = np.arange(p)
     z_transformed[:, diag, diag] = 0.0
@@ -174,10 +166,10 @@ def find_sum_count_fnc(X: np.ndarray, clip: int = 1-1e-7):
     """ 
         S = X[0] + X[1] + X[2] + .... + X[n] 
         sum of each matrix (53x53)
-        
+
         C = for each S[i][j] no.of X[i] matrix X[i][j] not NaN
     """
-    aggregated_sum_matrix = np.nansum(z_transformed, axis=0)          # (p, p)
+    aggregated_sum_matrix = np.nansum(z_transformed, axis=0)  # (p, p)
     total_count = np.sum(~np.isnan(z_transformed), axis=0)  # (p, p)
 
     ## Local Mean:
@@ -196,7 +188,7 @@ def average_fnc_by_label(
         X: np.ndarray,  # shape: (N, 53, 53), correlations in [-1,1]
         y: np.ndarray,  # shape: (N,), labels in {1,2}
         labels: np.ndarray,  # which labels to compute
-) -> tuple[dict[int, ndarray], dict[int, dict[str, any]]]:
+) -> Tuple[Dict[int, ndarray], Dict[int, Dict[str, any]]]:
     """
     Returns: dict {label: avg_matrix} with each avg_matrix shape (53, 53).
     Steps: Fisher z per subject -> element-wise mean in z -> tanh back to r.
@@ -220,36 +212,6 @@ def average_fnc_by_label(
         local_sum_count[lbl] = {'sum': local_mean_data['sum'], 'count': local_mean_data['count']}
 
     return avg_fnc, local_sum_count
-
-
-def global_mean_from_sites(site_packets: dict):
-    """
-    site_packets: list of dicts returned by site_stats_z for the SAME group.
-    Supports either upper-triangle or full-matrix mode (must match across sites).
-    Returns global average correlation matrix (p,p) for that group.
-    """
-    print('Global: ')
-
-    result = {}
-    for label in (1, 2):
-        aggregated_sum = np.zeros((53, 53), dtype=float)
-        aggregated_total = np.zeros((53, 53), dtype=float)
-
-        print(" label: ", label, "  count: ", len(site_packets[label]))
-
-        for pkt in site_packets[label]:
-            aggregated_sum += pkt["sum"]
-            aggregated_total += pkt["count"]
-
-        avg_fnc = np.divide(aggregated_sum, aggregated_total, out=np.zeros_like(aggregated_sum), where=aggregated_total > 0)
-
-        inverse_avg_fnc = np.tanh(avg_fnc)
-        inverse_avg_fnc = (inverse_avg_fnc + inverse_avg_fnc.T) / 2.0
-        np.fill_diagonal(inverse_avg_fnc, 1.0)
-
-        result[label] = inverse_avg_fnc
-
-    return result
 
 def save_fnc_h5(filepath: str, fnc: np.ndarray, space: str = "z"):
     """
@@ -289,6 +251,7 @@ def save_fnc_h5(filepath: str, fnc: np.ndarray, space: str = "z"):
         )
         dset.attrs["shape_kind"] = "NxN" if fnc.ndim == 2 else "SxNxN"
         dset.attrs["dtype"] = "float32"
+
 
 def load_fnc_h5(filepath: str):
     """
