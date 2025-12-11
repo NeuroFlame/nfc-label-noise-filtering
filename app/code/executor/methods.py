@@ -10,10 +10,10 @@ from scipy.spatial.distance import cdist
 
 from utils.data_loaders import load_result_matfile
 from utils.types import ConfigDTO, Centroids
-from local_ancillary import find_group_differences, find_avg_fnc_measures
-from crf import crf
-from find_scores import get_centroids
-from validation import convert_fnc_to_features
+from .local_ancillary import find_group_differences, find_avg_fnc_measures
+from .crf import crf
+from .find_scores import get_centroids
+from .validation import convert_fnc_to_features
 
 
 def filter_typical_subjects(config: ConfigDTO, rng: Generator):
@@ -40,7 +40,7 @@ def filter_typical_subjects(config: ConfigDTO, rng: Generator):
     np.savez(selected_features_file, **centroids)
 
     data_file_path = os.path.join(config.output_path, 'data.npy')
-    np.savez(data_file_path, data)
+    np.save(data_file_path, data)
 
     config.cache_dict.update({
         'data_file': data_file_path
@@ -110,7 +110,7 @@ def perform_relabelling(shareable: Shareable, config: ConfigDTO):
     """
     Compute Relabeled for every subject
     """
-    adaptive_score = shareable.get('adaptive_score')
+    adaptive_score = shareable.get('result')
     scores_path = os.path.join(config.output_path, f'{config.site_name}.csv')
     scores_df = pd.read_csv(scores_path)
 
@@ -121,23 +121,25 @@ def perform_relabelling(shareable: Shareable, config: ConfigDTO):
 
     label_groups = config.computation_params.get('LabelGroups')
 
-    re_labels[mask_group1] = label_groups['group2']['label']
-    re_labels[mask_group2] = label_groups['group1']['label']
+    re_labels[mask_group1] = label_groups['group1']['label']
+    re_labels[mask_group2] = label_groups['group2']['label']
 
     scores_df['re_labeled'] = re_labels
     scores_df.to_csv(scores_path)
 
     """Two Sample t-test of relabeled subjects"""
-    file_path = os.path.join(config.output_path, 'data.mat')
+    file_path = os.path.join(config.output_path, f'{config.site_name}.mat')
     original_dataset = load_result_matfile(file_path)
     X = original_dataset[config.site_name]
 
     label_groups = config.computation_params.get('LabelGroups')
-    find_group_differences(X, re_labels, config.output_path, label_groups)
+    find_group_differences(X, re_labels, config.output_path, label_groups, False)
 
     """ Avg FNC Matrix of Relabeled Subjects """
-    relabeled_aggregated_fnc_result = find_avg_fnc_measures(X, re_labels, config.output_path, label_groups)
+    relabeled_aggregated_fnc_result = find_avg_fnc_measures(X, re_labels, config.output_path, label_groups, False)
 
     return {
-        'output': relabeled_aggregated_fnc_result
+        'output': {
+            'aggregated_fnc_result': relabeled_aggregated_fnc_result
+        }
     }

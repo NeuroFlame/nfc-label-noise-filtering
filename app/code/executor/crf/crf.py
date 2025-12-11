@@ -84,7 +84,7 @@ def perform_crf(
         non_noise_ids, nltc_labels = crf_v1(training_data, parameters, rng=rng)
         nltc_decisions.append(nltc_labels)
         # print("picked sampling number: ", sampling_indexes[non_noise_ids, i])
-        non_noise_sampling_subjects.append(random_indices[non_noise_ids])
+        non_noise_sampling_subjects.append(random_indices[non_noise_ids].tolist())
 
     denoise_check = np.zeros((subject_count,), dtype=int)
     for i in range(parameters['CrfIterations']):
@@ -106,7 +106,7 @@ def perform_crf(
     savemat(output_path, {
         'count': final_mat,
         'nltc_labels': nltc_decisions,
-        'non_noise_ind': non_noise_sampling_subjects
+        # 'non_noise_ind': non_noise_sampling_subjects
     }, do_compression=True)
 
     return final_mat

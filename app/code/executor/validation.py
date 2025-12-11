@@ -73,7 +73,7 @@ def convert_fnc_to_features(config: ConfigDTO):
     source_data = fnc_flat[:, linear_idx]  # N x (P*(P-1)/2)
 
     # append labels as the last column
-    out = np.hstack([source_data, labels])
+    out = np.hstack([source_data, labels.reshape(-1, 1)])
 
     # save with variable name = dataset name (like MATLAB)
     out_path = os.path.join(config.output_path, f'{config.site_name}.mat')

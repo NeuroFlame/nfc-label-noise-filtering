@@ -22,7 +22,7 @@ def collect_typical_centroids(site_results: Dict[str, any], config: ConfigDTO):
     for site in site_results:
         site_centroids[site] = site_results[site]['centroids']
 
-        for _, group in label_groups:
+        for _, group in label_groups.items():
             label = group['label']
             if label in global_avg_per_label:
                 global_avg_per_label[label].append(site_results[site]['aggregated_fnc_result'][label])
@@ -34,12 +34,12 @@ def collect_typical_centroids(site_results: Dict[str, any], config: ConfigDTO):
 
 
     global_avg_fnc = global_mean_from_sites(global_avg_per_label, label_groups)
-    for _, group in label_groups:
+    for _, group in label_groups.items():
         fnc_heatmap(global_avg_fnc[group['label']], {
             'colorbar_name': 'Avg FNC Values',
             'title': f'Average FNC of Original {group["name"]} Subjects',
             'path': global_result_path,
-            'name': f'global_original_avg_fnc_{group["name"]}.png',
+            'name': f'global_Original_avg_fnc_{group["name"]}.png',
             'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
         })
 
@@ -113,22 +113,22 @@ def relabelled_avg_fnc(site_results: Dict[str, np.ndarray], config: ConfigDTO):
     global_avg_per_label = {}
     label_groups = config.computation_params.get('LabelGroups')
     for site in site_results:
-        for _, group in label_groups:
+        for _, group in label_groups.items():
             label = group['label']
             if label in global_avg_per_label:
-                global_avg_per_label[label].append(site_results[site][label])
+                global_avg_per_label[label].append(site_results[site]['aggregated_fnc_result'][label])
             else:
-                global_avg_per_label[label] = [site_results[site][label]]
+                global_avg_per_label[label] = [site_results[site]['aggregated_fnc_result'][label]]
 
     global_result_path = os.path.join(config.output_path, 'global_results')
     os.makedirs(global_result_path, exist_ok=True)
 
     global_avg_fnc = global_mean_from_sites(global_avg_per_label, label_groups)
-    for _, group in label_groups:
+    for _, group in label_groups.items():
         fnc_heatmap(global_avg_fnc[group['label']], {
             'colorbar_name': 'Avg FNC Values',
             'title': f'Average FNC of Relabeled {group["name"]} Subjects',
             'path': global_result_path,
-            'name': f'global_relabeled_avg_fnc_{group["name"]}.png',
+            'name': f'global_Relabeled_avg_fnc_{group["name"]}.png',
             'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
         })

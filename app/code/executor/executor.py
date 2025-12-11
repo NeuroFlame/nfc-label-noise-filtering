@@ -87,7 +87,6 @@ class DeNoiseExecutor(Executor):
                 client_result = helpers.perform_relabelling(shareable, config)
                 outgoing_shareable['result'] = client_result['output']
                 cache_dict.remove_cache()
-
             else:
                 raise ValueError({
                     'message': 'Invalid task Name',

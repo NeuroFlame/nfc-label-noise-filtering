@@ -112,14 +112,14 @@ class DeNoiseAggregator(Aggregator):
                 )
                 outgoing_shareable['result'] = agg_result['output']
 
-            if contribution_round == 1:
+            elif contribution_round == 1:
                 agg_result = am.compute_adaptive_threshold(
                     self.site_results[contribution_round],
                     config
                 )
                 outgoing_shareable['result'] = agg_result['output']
 
-            if contribution_round == 1:
+            elif contribution_round == 2:
                 am.relabelled_avg_fnc(
                     self.site_results[contribution_round],
                     config

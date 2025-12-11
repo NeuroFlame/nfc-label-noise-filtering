@@ -21,7 +21,7 @@ def find_typical_subjects(
     label_count[:, 3] = np.round(label_count[:, 3], 1)
 
     label_groups = config['LabelGroups']
-    typical_threshold = config['TypicalThreshold']
+    typical_threshold = config['TypicalThs']
 
     typical_indexes = np.where(label_count[:, 3] >= typical_threshold)[0]
 
@@ -238,33 +238,38 @@ def load_fnc_h5(filepath: str):
     return fnc, meta
 
 """ Two Sample ttest of Original labels: """
-def find_group_differences(X: np.ndarray, y: np.ndarray, output_path: str, label_groups: Dict[str, Dict[str, Any]]):
+def find_group_differences(X: np.ndarray, y: np.ndarray, output_path: str, label_groups: Dict[str, Dict[str, Any]], original=True):
     t_values, p_values = compute_two_sample_ttest(X, y, label_groups)
 
     corrected_t_values = upper_triangle_bonferroni(t_values, p_values)
 
+    group_name = "Original"
+    if not original:
+        group_name = "Relabelled"
     fnc_heatmap(
         corrected_t_values,
         {
             'colorbar_name' : 'T Values',
-            'title': f'Original {label_groups["group2"]["name"]} Vs {label_groups["group1"]["name"]} T-test values',
+            'title': f'{group_name} {label_groups["group2"]["name"]} Vs {label_groups["group1"]["name"]} T-test Comparison',
             'path': output_path,
-            'name': 'original_labels_ttest.png',
+            'name': f'{group_name}_labels_ttest.png',
             'domain_names': [0,5,7,16,25,42,49,53],
         }
     )
 
 """ Avg FNC Group Metrics """
-def find_avg_fnc_measures(X: np.ndarray, y: np.ndarray, output_path, label_groups: Dict[str, Dict[str, Any]]):
+def find_avg_fnc_measures(X: np.ndarray, y: np.ndarray, output_path, label_groups: Dict[str, Dict[str, Any]], original=True):
     """ Average FNC matrix """
     avg_fnc, aggregated_fnc_result = average_fnc_by_label(X, y, label_groups)
-
+    group_name = "Original"
+    if not original:
+        group_name = "Relabelled"
     for _, group in label_groups.items():
         fnc_heatmap(avg_fnc[group['label']], {
             'colorbar_name': "Avg FNC Values",
-            'title': f'Average FNC of Original {group["label"]} Subjects',
+            'title': f'Average FNC of {group_name} {group["name"]} Subjects',
             'path': output_path,
-            'name': f'local_original_avg_fnc_{group["label"]}.png',
+            'name': f'local_{group_name}_avg_fnc_{group["name"]}.png',
             'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
         })
 
