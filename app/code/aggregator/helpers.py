@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, Any
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -42,16 +42,17 @@ def fnc_heatmap(fnc_matrix: np.ndarray, options: HeatMapOptions):
     plt.savefig(output_filename)
     # plt.show()
 
-def global_mean_from_sites(site_packets: Dict, labels_map: Dict[str, str]):
+def global_mean_from_sites(site_packets: Dict, labels_map: Dict[str, Any]):
     """
     site_packets: list of dicts returned by site_stats_z for the SAME group.
     Supports either upper-triangle or full-matrix mode (must match across sites).
     Returns global average correlation matrix (p,p) for that group.
     """
     result = {}
-    for label in labels_map.keys():
+    for _, group in labels_map.items():
         aggregated_sum = np.zeros((53, 53), dtype=float)
         aggregated_total = np.zeros((53, 53), dtype=float)
+        label = group['label']
 
         for pkt in site_packets[label]:
             aggregated_sum += pkt["sum"]

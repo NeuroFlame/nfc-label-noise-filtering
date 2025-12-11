@@ -1,8 +1,16 @@
+import logging
+import os
 from typing import Dict, Any
 from nvflare.apis.shareable import Shareable
 from nvflare.apis.fl_context import FLContext
 from nvflare.app_common.abstract.aggregator import Aggregator
 from nvflare.apis.fl_constant import ReservedKey
+
+from utils.logger import NvFlareLogger
+from utils.types import ConfigDTO
+from utils.utils import get_output_directory_path
+
+from . import methods as am
 
 class DeNoiseAggregator(Aggregator):
     """
@@ -18,7 +26,10 @@ class DeNoiseAggregator(Aggregator):
         """
         super().__init__()
         # Store results as a dictionary
-        self.site_results: Dict[str, Dict[str, Any]] = {}
+        self.site_results: Dict[int, Dict[str, Any]] = {}
+        self.agg_cache: Dict[str, Any] = {}
+        self.agg_cache_dir = ""
+        self.logger = None
 
     def accept(self, site_result: Shareable, fl_ctx: FLContext) -> bool:
         """
@@ -33,9 +44,37 @@ class DeNoiseAggregator(Aggregator):
         """
         site_name = site_result.get_peer_prop(
             key=ReservedKey.IDENTITY_NAME, default=None)
+        contribution_round = fl_ctx.get_prop(key="CURRENT_ROUND",
+                                             default=None)
+
+        if contribution_round is None or site_name is None:
+            return False
+
+        if contribution_round not in self.site_results:
+            self.site_results[contribution_round] = {}
+
+        if self.logger is None:
+            log_level = fl_ctx.get_prop(key="log_level", default=None)
+            logging.info(f'log_level for aggregator: {log_level}')
+            self.logger = NvFlareLogger(
+                'aggregator.log',
+                get_output_directory_path(fl_ctx),
+                fl_ctx.get_prop(key="log_level", default="info")
+            )
+
+            remote_path = get_output_directory_path(fl_ctx)
+            self.agg_cache_dir = os.path.join(remote_path,
+                                              'temp_agg_cache')
+            os.makedirs(self.agg_cache_dir, exist_ok=True)
 
         # Store the result for the site using its identity name as the key
-        self.site_results[site_name] = site_result["result"]
+        self.site_results[contribution_round][site_name] = (
+            site_result["result"]
+        )
+
+        self.logger.info('accepting site result from: ', site_name,
+                         'from round: ', contribution_round)
+
         return True
 
     def aggregate(self, fl_ctx: FLContext) -> Shareable:
@@ -51,15 +90,44 @@ class DeNoiseAggregator(Aggregator):
 
         # Retrieve the decimal places from the computation parameters
         computation_parameters = fl_ctx.get_prop("COMPUTATION_PARAMETERS")
-        decimal_places = computation_parameters.get("decimal_places", 2)
-
-        # Transform site_results into the format expected by get_global_average
-        items = [
-            {"average": result["average"], "count": result["count"]}
-            for result in self.site_results.values()
-            if "average" in result and "count" in result
-        ]
-
-        # Create a new Shareable to store the aggregated result
         outgoing_shareable = Shareable()
-        return outgoing_shareable
+        contribution_round: int = fl_ctx.get_prop(key="CURRENT_ROUND",
+                                             default=None)
+        self.logger.info('aggregation round: ', contribution_round)
+
+        config: ConfigDTO = ConfigDTO(
+            data_path=None,
+            cache_path=self.agg_cache_dir,
+            computation_params=computation_parameters,
+            site_name='remote',
+            output_path=get_output_directory_path(fl_ctx=fl_ctx),
+            logger=self.logger,
+            cache_dict=self.agg_cache
+        )
+        try:
+            if contribution_round == 0:
+                agg_result = am.collect_typical_centroids(
+                    self.site_results[contribution_round],
+                    config
+                )
+                outgoing_shareable['result'] = agg_result['output']
+
+            if contribution_round == 1:
+                agg_result = am.compute_adaptive_threshold(
+                    self.site_results[contribution_round],
+                    config
+                )
+                outgoing_shareable['result'] = agg_result['output']
+
+            if contribution_round == 1:
+                am.relabelled_avg_fnc(
+                    self.site_results[contribution_round],
+                    config
+                )
+                config.cache_dict.clear()
+
+            return outgoing_shareable
+        except Exception as err:
+            self.logger.error('Exception: ', err)
+            self.logger.close()
+            raise Exception(f'exception: {err}')

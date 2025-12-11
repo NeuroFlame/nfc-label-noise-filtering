@@ -1,6 +1,7 @@
 import h5py
 from scipy.io import loadmat
 import numpy as np
+from typing import List
 
 
 def decode_utf16_array(array):
@@ -39,7 +40,7 @@ def iterate_group(data: h5py.Group, final_data: dict):
     return final_data
 
 
-def load_data_matfile(path: str, name: list[str] = None):
+def load_data_matfile(path: str, name: List[str] = None):
     data = None
     with h5py.File(path, 'r') as f:
         # List all groups in the file

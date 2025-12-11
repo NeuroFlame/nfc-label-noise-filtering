@@ -3,7 +3,9 @@
   "executors": [
     {
       "tasks": [
-
+        "filter_typical_subjects",
+        "find_inter_group_differences",
+        "perform_relabelling"
       ],
       "executor": {
         "path": "executor.executor.DeNoiseExecutor",

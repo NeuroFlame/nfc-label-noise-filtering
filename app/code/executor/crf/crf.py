@@ -5,7 +5,7 @@ from joblib import Parallel, delayed
 from numpy.random import Generator
 from scipy.stats import zscore
 from scipy.io import savemat
-from typing import Dict
+from typing import Dict, Mapping, Any
 
 # from ..src.data_loaders import load_result_matfile
 
@@ -17,7 +17,7 @@ def perform_crf(
     dataset: np.ndarray,
     result_path: str,
     name: str,
-    parameters: Dict[str, any],
+    parameters: Mapping[str, Any],
     rng: Generator
 ):
     """
@@ -35,16 +35,16 @@ def perform_crf(
     len_label_classes = len(label_classes)
     # class is either 1 (SZ) or 2 (HC)
     original_cls_label_indexes = dict()
-    sampling_cls_label_count = [None] * len_label_classes
+    sampling_cls_label_count = []
 
     for i in range(len_label_classes):
         original_cls_label_indexes[label_classes[i]] = np.where(
             labels == label_classes[i]
         )[0]
-        sampling_cls_label_count[i] = floor(
+        sampling_cls_label_count.append(floor(
             len(original_cls_label_indexes[label_classes[i]]
-                ) * parameters['sampling_threshold']
-        )
+                ) * parameters['SamplingThs']
+        ))
 
     dtype = np.dtype([
         ("subject_id", np.int64),   # col 0
@@ -61,7 +61,7 @@ def perform_crf(
     # for each sampling, subjects Ids which are not noise
     non_noise_sampling_subjects = []
     nltc_decisions = []
-    for i in range(parameters['iter']):
+    for i in range(parameters['CrfIterations']):
         print(f"Constructing No. {i+1} CRF for {name} dataset")
         index_temp = []
         for cls in label_classes:
@@ -87,7 +87,7 @@ def perform_crf(
         non_noise_sampling_subjects.append(random_indices[non_noise_ids])
 
     denoise_check = np.zeros((subject_count,), dtype=int)
-    for i in range(parameters['iter']):
+    for i in range(parameters['CrfIterations']):
         idxs = non_noise_sampling_subjects[i]
         denoise_check[idxs] += 1
 
@@ -112,11 +112,11 @@ def perform_crf(
     return final_mat
 
 
-def crf_v1(train_data: np.ndarray, parameters: Dict[str, any], rng: Generator):
+def crf_v1(train_data: np.ndarray, parameters: Mapping[str, Any], rng: Generator):
     """unique splits for different iterations"""
-    children = rng.bit_generator._seed_seq.spawn(2*parameters['ntree'])
-    ss_f1 = children[:parameters['ntree']]
-    ss_f2 = children[parameters['ntree']:2*parameters['ntree']]
+    children = rng.bit_generator._seed_seq.spawn(2*parameters['CrfTrees'])
+    ss_f1 = children[:parameters['CrfTrees']]
+    ss_f2 = children[parameters['CrfTrees']:2*parameters['CrfTrees']]
 
     subjects_count, _ = train_data.shape
     is_continuous_data = is_continuous(train_data[:, 1:])
@@ -133,9 +133,9 @@ def crf_v1(train_data: np.ndarray, parameters: Dict[str, any], rng: Generator):
         batch_size="auto"
     )(
         delayed(build_crf_results_iter)(
-            train_data, is_continuous_data, 1, ss_f1[_]
+            train_data, is_continuous_data, parameters['LabelGroups']['group1']['label'], ss_f1[_]
         )
-        for _ in range(parameters['ntree'])
+        for _ in range(parameters['CrfTrees'])
     )
 
     final_output_2 = Parallel(
@@ -144,9 +144,9 @@ def crf_v1(train_data: np.ndarray, parameters: Dict[str, any], rng: Generator):
         batch_size="auto"
     )(
         delayed(build_crf_results_iter)(
-            train_data, is_continuous_data, 2, ss_f2[_]
+            train_data, is_continuous_data, parameters['LabelGroups']['group2']['label'], ss_f2[_]
         )
-        for _ in range(parameters['ntree'])
+        for _ in range(parameters['CrfTrees'])
     )
 
     # for i in range(ntree):
@@ -159,11 +159,11 @@ def crf_v1(train_data: np.ndarray, parameters: Dict[str, any], rng: Generator):
     final_decisions = np.hstack([final_output_1, final_output_2])
 
     final_decisions[final_decisions <
-                    parameters['label_threshold']] = 0  # non-noise
+                    parameters['NoiseIntensityThs']] = 0  # non-noise
     final_decisions[final_decisions >=
-                    parameters['label_threshold']] = 1  # noise
+                    parameters['NoiseIntensityThs']] = 1  # noise
 
-    noise_subjects = (final_decisions.sum(axis=1) > 0.5 * parameters['ntree'] * 2).astype(
+    noise_subjects = (final_decisions.sum(axis=1) > 0.5 * parameters['CrfTrees'] * 2).astype(
         int
     )
 

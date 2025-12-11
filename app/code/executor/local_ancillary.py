@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any, Mapping
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import ndarray
@@ -13,63 +13,28 @@ from utils.types import HeatMapOptions, SourceDataKeys
 import h5py
 import time
 
-def convert_fnc_to_features(original_dataset, dest_path: str, name: str):
-    # --- find diagnosis column (case-insensitive) ---
-    file_ids = original_dataset[SourceDataKeys.FILE_ID.value]
-    label_index = next(
-        (i for i, col in enumerate(file_ids) if "diagnosis" in col.lower()),
-        None
-    )
-    if label_index is None:
-        raise ValueError(f'No "diagnosis" column found in FILE_ID for {name}')
-
-    labels = original_dataset[SourceDataKeys.ANALYSIS_SCORE.value][:, label_index]
-    labels = labels.reshape(-1, 1)
-
-    fnc_matrices = original_dataset[SourceDataKeys.SFNC.value]  # shape: (N, P, P)
-    N, P, _ = fnc_matrices.shape
-
-    # --- build the lower-triangle mask excluding diagonal (k=-1) ---
-    mask = np.tril(np.ones((P, P), dtype=bool), k=-1)  # P x P
-
-    linear_idx = np.where(mask.ravel(order='F'))[0]  # size: P*(P-1)/2
-    fnc_flat_F = fnc_matrices.reshape(N, P * P, order='F')  # N x (P*P)
-
-    source_data = fnc_flat_F[:, linear_idx]  # N x (P*(P-1)/2)
-
-    # append labels as the last column
-    out = np.hstack([source_data, labels])
-
-    # save with variable name = dataset name (like MATLAB)
-    out_path = os.path.join(dest_path, f'{name}.mat')
-    savemat(out_path, {name: out}, do_compression=True)
-
-    return out
-
-
 def find_typical_subjects(
         original_labels: np.ndarray,
         label_count: np.ndarray,
-        typical_threshold: float,
+        config: Mapping[str, Any],
 ) -> Tuple[ndarray, ndarray]:
     label_count[:, 3] = np.round(label_count[:, 3], 1)
-    print(len(original_labels), len(label_count))
+
+    label_groups = config['LabelGroups']
+    typical_threshold = config['TypicalThreshold']
 
     typical_indexes = np.where(label_count[:, 3] >= typical_threshold)[0]
-    print('len of typical subjects: ', len(typical_indexes))
 
     typical_labels = original_labels[typical_indexes]
 
     assert len(typical_labels) == len(typical_indexes)
 
-    typical_sz = typical_indexes[typical_labels == 1]
-    typical_hc = typical_indexes[typical_labels == 2]
+    typical_group1 = typical_indexes[typical_labels == label_groups['group1']['label']]
+    typical_group2 = typical_indexes[typical_labels == label_groups['group2']['label']]
 
-    return np.array(typical_hc), np.array(typical_sz)
-
+    return  np.array(typical_group1), np.array(typical_group2)
 
 def fnc_heatmap(fnc_matrix: np.ndarray, options: HeatMapOptions):
-    # Symmetric color range
 
     colorbar_name = options.get('colorbar_name', "")
     title = options.get('title', "Heat Map")
@@ -92,7 +57,7 @@ def fnc_heatmap(fnc_matrix: np.ndarray, options: HeatMapOptions):
             ax.axhline(g - 0.5, color='k', lw=0.6)
             ax.axvline(g - 0.5, color='k', lw=0.6)
 
-    ax.set_xticks([]);
+    ax.set_xticks([])
     ax.set_yticks([])
     if title:
         ax.set_title(title)
@@ -120,32 +85,35 @@ def upper_triangle_bonferroni(t_values: np.ndarray, p_values: np.ndarray, alpha=
     return t_matrix
 
 
-def split_dataset(dataset: np.ndarray, labels: np.ndarray) -> Tuple[ndarray, ndarray]:
+def split_dataset(dataset: np.ndarray, labels: np.ndarray, label_groups: Dict[str, Dict[str, Any]]) -> Tuple[ndarray, ndarray]:
     assert dataset.ndim == 3 and dataset.shape[1:] == (53, 53), "A53 must be (N,53,53)"
     labels12 = np.asarray(labels).reshape(-1)
 
     assert dataset.shape[0] == labels12.shape[0], "N mismatch between data and labels"
     assert set(np.unique(labels12)).issubset({1, 2, -1}), "labels must be 1/2 or boundary"
 
-    group_sz = dataset[labels12 == 1]  # SZ
-    group_hc = dataset[labels12 == 2]  # HC
+    group1 = label_groups['group1']
+    group2 = label_groups['group2']
 
-    return group_sz, group_hc
+    group_1 = dataset[labels12 == group1['label']]  # SZ
+    group_2 = dataset[labels12 == group2['label']]  # HC
+
+    return group_1, group_2
 
 
-def compute_two_sample_ttest(dataset: np.ndarray, labels12=None):
+def compute_two_sample_ttest(dataset: np.ndarray, labels, label_groups: Dict[str, Dict[str, Any]]):
     """
     dataset: np.ndarray of shape (N, 53, 53)  -- FNC per subject
     labels12: np.ndarray of shape (N) with values in {1,2,-1}
     """
 
-    group_sz, group_hc = split_dataset(dataset, labels12)
+    group_1, group_2 = split_dataset(dataset, labels, label_groups)
 
-    if group_sz.size == 0 or group_hc.size == 0:
+    if group_1.size == 0 or group_2.size == 0:
         raise ValueError("Both groups need at least one subject.")
 
     # Welch t-test per cell (across subjects)
-    t_values, p_values = ttest_ind(group_hc, group_sz, axis=0, equal_var=False, nan_policy="omit")  # HC Vs SZ
+    t_values, p_values = ttest_ind(group_2, group_1, axis=0, equal_var=False, nan_policy="omit")  # HC Vs SZ
 
     return t_values, p_values  # 53x53
 
@@ -187,8 +155,8 @@ def find_sum_count_fnc(X: np.ndarray, clip: int = 1 - 1e-7):
 def average_fnc_by_label(
         X: np.ndarray,  # shape: (N, 53, 53), correlations in [-1,1]
         y: np.ndarray,  # shape: (N,), labels in {1,2}
-        labels: np.ndarray,  # which labels to compute
-) -> Tuple[Dict[int, ndarray], Dict[int, Dict[str, any]]]:
+        labels_group: Dict[str, Dict[str, Any]],  # which labels to compute
+) -> Tuple[Dict[str, ndarray], Dict[str, Dict[str, any]]]:
     """
     Returns: dict {label: avg_matrix} with each avg_matrix shape (53, 53).
     Steps: Fisher z per subject -> element-wise mean in z -> tanh back to r.
@@ -200,16 +168,16 @@ def average_fnc_by_label(
     avg_fnc = {}
     local_sum_count = {}
 
-    for lbl in labels:
-        idx = (y == lbl)
+    for _, group in labels_group.items():
+        idx = (y == group['label'])
 
         if not np.any(idx):
-            raise ValueError(f"No subjects with label {lbl}")
+            raise ValueError(f"No subjects with label {group['label']}")
 
         local_mean_data = find_sum_count_fnc(X[idx])
 
-        avg_fnc[lbl] = local_mean_data['avg_fnc']
-        local_sum_count[lbl] = {'sum': local_mean_data['sum'], 'count': local_mean_data['count']}
+        avg_fnc[group['label']] = local_mean_data['avg_fnc']
+        local_sum_count[group['label']] = {'sum': local_mean_data['sum'], 'count': local_mean_data['count']}
 
     return avg_fnc, local_sum_count
 
@@ -268,3 +236,36 @@ def load_fnc_h5(filepath: str):
             "shape_kind": f["fnc"].attrs.get("shape_kind", None),
         }
     return fnc, meta
+
+""" Two Sample ttest of Original labels: """
+def find_group_differences(X: np.ndarray, y: np.ndarray, output_path: str, label_groups: Dict[str, Dict[str, Any]]):
+    t_values, p_values = compute_two_sample_ttest(X, y, label_groups)
+
+    corrected_t_values = upper_triangle_bonferroni(t_values, p_values)
+
+    fnc_heatmap(
+        corrected_t_values,
+        {
+            'colorbar_name' : 'T Values',
+            'title': f'Original {label_groups["group2"]["name"]} Vs {label_groups["group1"]["name"]} T-test values',
+            'path': output_path,
+            'name': 'original_labels_ttest.png',
+            'domain_names': [0,5,7,16,25,42,49,53],
+        }
+    )
+
+""" Avg FNC Group Metrics """
+def find_avg_fnc_measures(X: np.ndarray, y: np.ndarray, output_path, label_groups: Dict[str, Dict[str, Any]]):
+    """ Average FNC matrix """
+    avg_fnc, aggregated_fnc_result = average_fnc_by_label(X, y, label_groups)
+
+    for _, group in label_groups.items():
+        fnc_heatmap(avg_fnc[group['label']], {
+            'colorbar_name': "Avg FNC Values",
+            'title': f'Average FNC of Original {group["label"]} Subjects',
+            'path': output_path,
+            'name': f'local_original_avg_fnc_{group["label"]}.png',
+            'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
+        })
+
+    return aggregated_fnc_result

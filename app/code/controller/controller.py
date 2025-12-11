@@ -1,5 +1,7 @@
 import json
 import logging
+from numpy.random import SeedSequence, PCG64, Generator
+import random
 
 from nvflare.apis.fl_constant import FLContextKey
 from nvflare.apis.impl.controller import Controller, Task, ClientTask
@@ -9,7 +11,8 @@ from nvflare.apis.shareable import Shareable
 
 from utils.logger import NvFlareLogger
 from utils.utils import get_parameters_file_path, get_output_directory_path
-from utils.task_constants import DeNoise_AGGREGATOR_ID
+from utils.task_constants import DeNoise_AGGREGATOR_ID, FILTER_TYPICAL_SUBJECTS, FIND_INTER_GROUP_DIFFERENCES, \
+    PERFORM_RELABELLING
 from typing import Callable
 
 
@@ -29,6 +32,7 @@ class DeNoiseController(Controller):
         :param task_timeout: Timeout for task completion.
         """
         super().__init__()
+        self.aggregator = None
         self._task_timeout = task_timeout
         self._min_clients = min_clients
         self._wait_time_after_min_received = wait_time_after_min_received
@@ -74,10 +78,26 @@ class DeNoiseController(Controller):
         :param abort_signal: Signal for aborting the flow if needed.
         :param fl_ctx: Federated learning context for this run.
         """
+
+        fl_ctx.set_prop(key="CURRENT_ROUND", value=0)
+        self.log.info('Iteration: ', 0)
+
+        # Complete Random forest persist random splitter:
+        round_ss = SeedSequence(20250908)  # your main entropy/seed
+        entropy = round_ss.entropy  # integer
+        spawn_key = round_ss.spawn_key  # tuple
+        global_seed = int(round_ss.generate_state(1)[0])
+
+        # send entropy + spawn_key (JSON serializable)
+        payload = Shareable()
+        payload["entropy"] = entropy
+        payload["spawn_key"] = list(spawn_key)  # make JSON-friendly
+        payload["global_seed"] = global_seed
+
         # Broadcast the regression task and send site results to the aggregator
         self._broadcast_task(
-            task_name=TASK_NAME_GET_LOCAL_AVERAGE_AND_COUNT,
-            data=Shareable(),
+            task_name=FILTER_TYPICAL_SUBJECTS,
+            data=payload,
             result_cb=self._accept_site_regression_result,
             fl_ctx=fl_ctx,
             abort_signal=abort_signal,
@@ -86,14 +106,37 @@ class DeNoiseController(Controller):
         # Aggregate results from all sites
         aggregate_result = self.aggregator.aggregate(fl_ctx)
 
+        # Increment iteration number after every aggregation
+        fl_ctx.set_prop(key="CURRENT_ROUND", value=1)
+        self.log.info('Iteration: ', 1)
+
         # Broadcast the global aggregated results to all sites
         self._broadcast_task(
-            task_name=TASK_NAME_ACCEPT_GLOBAL_AVERAGE,
+            task_name=FIND_INTER_GROUP_DIFFERENCES,
             data=aggregate_result,
-            result_cb=None,
+            result_cb=self._accept_site_regression_result,
             fl_ctx=fl_ctx,
             abort_signal=abort_signal,
         )
+
+        # Aggregate results from all sites
+        aggregate_result = self.aggregator.aggregate(fl_ctx)
+
+        # Increment iteration number after every aggregation
+        fl_ctx.set_prop(key="CURRENT_ROUND", value=2)
+        self.log.info('Iteration: ', 2)
+
+        # Broadcast the global aggregated results to all sites
+        self._broadcast_task(
+            task_name=PERFORM_RELABELLING,
+            data=aggregate_result,
+            result_cb=self._accept_site_regression_result,
+            fl_ctx=fl_ctx,
+            abort_signal=abort_signal,
+        )
+
+        # Aggregate results from all sites
+        self.aggregator.aggregate(fl_ctx)
 
     def _accept_site_regression_result(self, client_task: ClientTask, fl_ctx: FLContext) -> bool:
         """

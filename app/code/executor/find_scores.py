@@ -1,3 +1,5 @@
+from typing import Mapping, Any
+
 import numpy as np
 from scipy import stats
 from scipy.spatial.distance import cdist
@@ -71,36 +73,33 @@ def compute_score(independent_data, typical_data):  # -> Any:
 def get_centroids(
     subject_data: np.ndarray,
     subject_label_count: np.ndarray,
-    typical_threshold: float,
+    config: Mapping[str, Any],
 ) -> Centroids:
 
     col = subject_data.shape[1]
-    typ_hc, typ_sz = find_typical_subjects(
-        subject_data[:, -1], subject_label_count, typical_threshold)
+    typ_group1, typ_group2 = find_typical_subjects(
+        subject_data[:, -1], subject_label_count, config)
 
-    typical_sz_data = subject_data[typ_sz, :-1]
-    typical_hc_data = subject_data[typ_hc, :-1]
+    typical_group1_data = subject_data[typ_group1, :-1]
+    typical_group2_data = subject_data[typ_group2, :-1]
 
     t_stat, p_val = stats.ttest_ind(
-        typical_sz_data, typical_hc_data, axis=0, equal_var=True)
-
-    # print('pvals: ', p_val)
+        typical_group1_data, typical_group2_data, axis=0, equal_var=True)
 
     significant_threshold = 0.01 / (col - 1)
 
     selected_features = cumulative_features_selection(
         p_val, significant_threshold)
-    # print('selected features: ', selected_features)
 
-    center_sz: np.ndarray = np.mean(
-        typical_sz_data[:, selected_features], axis=0).reshape(1, -1)
-    center_hc: np.ndarray = np.mean(
-        typical_hc_data[:, selected_features], axis=0).reshape(1, -1)
+    center_group1: np.ndarray = np.mean(
+        typical_group1_data[:, selected_features], axis=0).reshape(1, -1)
+    center_group2: np.ndarray = np.mean(
+        typical_group2_data[:, selected_features], axis=0).reshape(1, -1)
 
     return {
-        "center_sz": center_sz,
-        "center_hc": center_hc,
+        "group1_center": center_group1,
+        "group2_center": center_group2,
         "selected_features": selected_features,
-        'typ_sz': typ_sz,
-        'typ_hc': typ_hc
+        'group1_typ_subjects': typ_group1,
+        'group2_typ_subjects': typ_group2
     }

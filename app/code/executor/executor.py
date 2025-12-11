@@ -1,6 +1,9 @@
 import logging
 import json
 import os
+import random
+import numpy as np
+from numpy.random import SeedSequence, Generator, PCG64
 
 from nvflare.apis.executor import Executor
 from nvflare.apis.fl_constant import FLContextKey
@@ -9,6 +12,7 @@ from nvflare.apis.shareable import Shareable
 from nvflare.apis.signal import Signal
 
 from utils.logger import NvFlareLogger
+from utils.task_constants import FILTER_TYPICAL_SUBJECTS, FIND_INTER_GROUP_DIFFERENCES, PERFORM_RELABELLING
 from utils.types import ConfigDTO
 from utils.utils import get_data_directory_path, get_output_directory_path
 
@@ -55,8 +59,47 @@ class DeNoiseExecutor(Executor):
         # components
         outgoing_shareable = Shareable()
 
+        try:
+            if task_name == FILTER_TYPICAL_SUBJECTS:
+                entropy = shareable["entropy"]
+                spawn_key = tuple(shareable["spawn_key"])
+                global_seed = shareable["global_seed"]
 
-        return outgoing_shareable
+                # recreate same SeedSequence
+                round_ss = SeedSequence(entropy=entropy, spawn_key=spawn_key)
+
+                # reseed Python + NumPy
+                random.seed(global_seed)
+                np.random.seed(global_seed)
+
+                # recreate RNG generator EXACTLY like controller
+                rng_round = Generator(PCG64(round_ss))
+
+                client_result = helpers.filter_typical_subjects(config, rng_round)
+                cache_dict.update_cache_dict(client_result['cache'])
+                outgoing_shareable['result'] = client_result['output']
+
+            elif task_name == FIND_INTER_GROUP_DIFFERENCES:
+                client_result = helpers.find_inter_group_differences(shareable, config)
+                outgoing_shareable['result'] = client_result['output']
+
+            elif task_name == PERFORM_RELABELLING:
+                client_result = helpers.perform_relabelling(shareable, config)
+                outgoing_shareable['result'] = client_result['output']
+                cache_dict.remove_cache()
+
+            else:
+                raise ValueError({
+                    'message': 'Invalid task Name',
+                    'value': task_name
+                })
+
+            return outgoing_shareable
+        except Exception as err:
+            config.logger.error('Exception: ', err)
+            raise Exception(f'exception: {err}')
+        finally:
+            logger.close()
 
 
 def load_data(fl_ctx: FLContext):

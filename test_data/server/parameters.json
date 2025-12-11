@@ -5,9 +5,15 @@
   "NoiseIntensityThs": 2,
   "TypicalThs": 0.8,
   "TruncationParameter": 0.2,
-  "Labels": {
-    "1": "SZ",
-    "2": "HC"
+  "LabelGroups": {
+    "group1": {
+      "label": 1,
+      "name": "SZ"
+    },
+    "group2": {
+      "label": 2,
+      "name": "HC"
+    }
   },
   "LogLevel": "debug"
 }

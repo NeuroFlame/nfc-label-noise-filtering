@@ -16,11 +16,11 @@ class SourceDataKeys(Enum):
     SFNC = 'sFNC'
 
 class Centroids(TypedDict):
-    center_sz: np.ndarray
-    center_hc: np.ndarray
+    group1_center: np.ndarray
+    group2_center: np.ndarray
     selected_features: np.ndarray
-    typ_sz: np.ndarray
-    typ_hc: np.ndarray
+    group1_typ_subjects: np.ndarray
+    group2_typ_subjects: np.ndarray
 
 @dataclass(frozen=True)
 class RelabelResult:
@@ -46,7 +46,7 @@ class ComputationParamDTO(TypedDict):
     NoiseIntensityThs: int
     TypicalThs: float
     TruncationParameter: float
-    Labels: Dict[int, str]
+    LabelGroups: Dict[str, Dict[str, Any]]
     LogLevel: str
 
 class ConfigDTO(NamedTuple):
