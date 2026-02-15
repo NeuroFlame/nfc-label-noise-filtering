@@ -1,13 +1,11 @@
 import os
 from enum import Enum
 
-import matplotlib.pyplot as plt
 import numpy as np
 from numpy import ndarray
 from scipy.io import savemat
 from scipy.stats import ttest_ind
 
-from executor.types_def import HeatMapOptions
 import h5py
 import time
 
@@ -76,42 +74,6 @@ def find_typical_subjects(
     typical_hc = typical_indexes[typical_labels == 2]
 
     return np.array(typical_hc), np.array(typical_sz)
-
-
-def fnc_heatmap(fnc_matrix: np.ndarray, options: HeatMapOptions):
-    # Symmetric color range
-
-    colorbar_name = options.get('colorbar_name', "")
-    title = options.get('title', "Heat Map")
-    name = options.get('name', "heatmap.png")
-    domain_breaks: list = options.get('domain_names', [])
-    output_path = options.get('path', "")
-
-    max_value = np.nanmax(np.abs(fnc_matrix))
-
-    max_value = max_value if np.isfinite(max_value) and max_value > 0 else 1.0
-
-    fig, ax = plt.subplots(figsize=(5.2, 5.2), dpi=180)
-    im = ax.imshow(fnc_matrix, cmap="RdYlBu_r", vmin=-max_value, vmax=max_value, origin="upper")
-    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label(colorbar_name, rotation=270, labelpad=10)
-
-    # Optional domain gridlines (edit to your atlas boundaries)
-    if domain_breaks:
-        for g in domain_breaks:
-            ax.axhline(g-0.5, color='k', lw=0.6)
-            ax.axvline(g-0.5, color='k', lw=0.6)
-
-    ax.set_xticks([]); ax.set_yticks([])
-    if title:
-        ax.set_title(title)
-    plt.tight_layout()
-
-    output_filename = os.path.join(output_path, name)
-
-    plt.savefig(output_filename)
-    # plt.show()
-
 
 def upper_triangle_bonferroni(t_values: np.ndarray, p_values: np.ndarray, alpha=0.01):
     n = 53
@@ -222,34 +184,6 @@ def average_fnc_by_label(
     return avg_fnc, local_sum_count
 
 
-def global_mean_from_sites(site_packets: dict):
-    """
-    site_packets: list of dicts returned by site_stats_z for the SAME group.
-    Supports either upper-triangle or full-matrix mode (must match across sites).
-    Returns global average correlation matrix (p,p) for that group.
-    """
-    print('Global: ')
-
-    result = {}
-    for label in (1, 2):
-        aggregated_sum = np.zeros((53, 53), dtype=float)
-        aggregated_total = np.zeros((53, 53), dtype=float)
-
-        print(" label: ", label, "  count: ", len(site_packets[label]))
-
-        for pkt in site_packets[label]:
-            aggregated_sum += pkt["sum"]
-            aggregated_total += pkt["count"]
-
-        avg_fnc = np.divide(aggregated_sum, aggregated_total, out=np.zeros_like(aggregated_sum), where=aggregated_total > 0)
-
-        inverse_avg_fnc = np.tanh(avg_fnc)
-        inverse_avg_fnc = (inverse_avg_fnc + inverse_avg_fnc.T) / 2.0
-        np.fill_diagonal(inverse_avg_fnc, 1.0)
-
-        result[label] = inverse_avg_fnc
-
-    return result
 
 def save_fnc_h5(filepath: str, fnc: np.ndarray, space: str = "z"):
     """

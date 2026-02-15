@@ -1,0 +1,17 @@
+{
+  "SamplingThreshold": 0.7,
+  "Iteration": 101,
+  "NTree": 201,
+  "LabelThreshold": 2,
+  "TypicalThreshold": 0.8,
+  "TruncationParameter": 0.2,
+  "LabelDefinition": {
+    "1": {
+      "name": "SZ"
+    },
+    "2": {
+      "name": "HC"
+    }
+  },
+  "LogLevel": "error"
+}

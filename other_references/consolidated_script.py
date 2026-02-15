@@ -6,10 +6,10 @@ import random
 from scipy.spatial.distance import cdist
 
 from executor.crf import crf
-from types_def import Centroids
+from app.code.Models.CentroidModel import Centroids
 from utils import utils
-from utils import find_scores
-from utils import data_loaders
+from app.code.executor.find_scores import get_centroids
+from app.code.executor.data_loaders import load_data_matfile
 
 from numpy.random import SeedSequence, PCG64, Generator
 
@@ -49,7 +49,7 @@ def perform_local_step_1(site_name: str, data_path: str, output_path: str, rng: 
     """
 
     file_path = os.path.join(data_path, 'data.mat')
-    original_dataset = data_loaders.load_data_matfile(
+    original_dataset = load_data_matfile(
         file_path,
         name=[
             utils.SourceDataKeys.SFNC.value,
@@ -101,7 +101,7 @@ def perform_local_step_1(site_name: str, data_path: str, output_path: str, rng: 
     # crf_file = os.path.join(output_path, f'{site_name}_CRF.mat')
     # subject_noise_counts = data_loaders.load_result_matfile(crf_file)['count'][:]
 
-    centroids = find_scores.get_centroids(
+    centroids = get_centroids(
         data, subject_noise_counts, parameters["typical_threshold"])
 
     selected_features_file = os.path.join(output_path, 'centers.npz')

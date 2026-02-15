@@ -1,12 +1,9 @@
 # Task names
-CONSTRAINED_ICA_ANALYSIS = "constrained_ica_analysis"
-LOCAL_REGRESSION_STATISTICS = "local_regression_statistics"
-LOCAL_ERROR_STATISTICS = "local_error_statistics"
-RESULTS_SUMMARY = "results_summary"
-
-# Component IDs
+PERFORM_LOCAL_CRF = "perform_local_crf"
+DIMENSIONAL_SCORE = "calculate_dimensional_score"
+RELABEL_DATA = "perform_relabelling_data"
 
 # Aggregator IDs
 # Hint: Make sure to have same name in both config_fed_server.json
-DCSBM_AGGREGATOR_ID = "dcsbm_aggregator"
+LAMP_AGGREGATOR_ID = "fed_lamp_aggregator"
 

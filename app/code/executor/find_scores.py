@@ -2,12 +2,9 @@ import numpy as np
 from scipy import stats
 from scipy.spatial.distance import cdist
 from executor.helpers import find_typical_subjects
-from executor.types_def import Centroids
-
+from Models.CentroidModel import Centroids
 
 # cummulative feature selection using Bonferroni corrected threshold 0.01/(Col-1)
-
-
 def cumulative_features_selection(Pval, PvalPara):
     # Pval: 1-D array of p-values
     FeaInd = np.argsort(Pval)                  # indices sorted by p-value

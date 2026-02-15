@@ -1,17 +1,18 @@
-import site
 from typing import NamedTuple, Dict, Any, TypedDict
-from enum import Enum
-
 from .logger import NvFlareLogger
 
+class LabelMetaData(TypedDict):
+  name: str
+
 class ComputationParamDTO(TypedDict):
-  Covariates: Dict[str, str]
-  ReferenceColumns: Dict[str, str]
-  ScicaTemplatePath: str
-  MaskPath: str
-  SubsampleNiftiImages: bool
-  VoxelSize: int
-  LogLovel: str
+  SamplingThreshold: float
+  Iteration: int
+  NTree: int
+  LabelThreshold: int
+  TypicalThreshold: float
+  TruncationParameter: float
+  LabelDefinition: Dict[str, LabelMetaData]
+  LogLevel: str
 
 class ConfigDTO(NamedTuple):
   data_path: str

@@ -3,11 +3,12 @@
   "executors": [
     {
       "tasks": [
-        "GET_LOCAL_AVERAGE_AND_COUNT",
-        "ACCEPT_GLOBAL_AVERAGE"
+        "perform_local_crf",
+        "calculate_dimensional_score",
+        "perform_relabelling_data"
       ],
       "executor": {
-        "path": "executor.executor.MyExecutor",
+        "path": "executor.executor.LAMPExecutor",
         "args": {}
       }
     }
