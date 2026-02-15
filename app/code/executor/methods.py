@@ -91,10 +91,6 @@ def perform_local_crf(config: ConfigDTO, rng: Generator, global_seed: int = 0) -
     selected_features_file = os.path.join(config.output_path, 'centers.npz')
     np.savez(selected_features_file, **centroids)
 
-    config.cache_dict.update({
-        "data": data,
-    })
-
     output = {
         'centroids': centroids,
         'aggregated_fnc_result': aggregated_fnc_result
@@ -102,12 +98,12 @@ def perform_local_crf(config: ConfigDTO, rng: Generator, global_seed: int = 0) -
 
     return {
         "output": output,
-        "cache": config.cache_dict,
     }
 
 def calculate_dimensional_score(shareable: Shareable, config: ConfigDTO):
     site_results = shareable.get('result')
-    ind_site_data: np.ndarray = config.cache_dict.get('data')
+    out_path = os.path.join(config.output_path, f'{config.site_name}.mat')
+    ind_site_data: np.ndarray = data_loaders.load_result_matfile(out_path)
     site_scores = pd.DataFrame(columns=list(site_results.keys()))
 
     for site in site_results:
