@@ -7,7 +7,7 @@ from numpy import ndarray
 from scipy.io import savemat
 from scipy.stats import ttest_ind
 
-from nvflare_code.types_def import HeatMapOptions
+from executor.types_def import HeatMapOptions
 import h5py
 import time
 

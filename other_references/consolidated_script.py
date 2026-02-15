@@ -3,11 +3,10 @@ import numpy as np
 import pandas as pd
 import random
 
-from numpy import ndarray
 from scipy.spatial.distance import cdist
 
-from crf import crf
-from types_def import Centroids, HeatMapOptions
+from executor.crf import crf
+from types_def import Centroids
 from utils import utils
 from utils import find_scores
 from utils import data_loaders

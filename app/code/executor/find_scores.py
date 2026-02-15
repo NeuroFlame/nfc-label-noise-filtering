@@ -1,8 +1,8 @@
 import numpy as np
 from scipy import stats
 from scipy.spatial.distance import cdist
-from .utils import find_typical_subjects
-from nvflare_code.types_def import Centroids
+from executor.helpers import find_typical_subjects
+from executor.types_def import Centroids
 
 
 # cummulative feature selection using Bonferroni corrected threshold 0.01/(Col-1)
