@@ -6,28 +6,36 @@ This paper presents Fed LAMP, a label noise filtering based dimensional predicti
 
 ```json
 {
-    "sampling_threshold": "float",
-    "iter": "int",
-    "ntree": "int",
-    "label_threshold": "float",
-    "typical_threshold": "float",
-    "group_names": {
-        1: "str",
-        2: "str"
+    "SamplingThreshold": "float",
+    "Iteration": "int",
+    "NTree": "int",
+    "LabelThreshold": "float",
+    "TypicalThreshold": "float",
+    "TruncationParameter": "float",
+    "LabelDefinition": {
+        "1": {
+          "name": "str",
+          "label": "any"
+        },
+        "2": {
+          "name": "str",
+          "label": "any"
+        }
     },
-    "base_input_data": "site/to/mat_file"
+    "LogLevel": "str"
 }
 ```
 
 ### Settings Specification
 
-| Variable Name | Type | Description | Allowed Options | Default | Required |
-| --- | --- | --- | --- | --- | --- |
-| `sampling_threshold` | `float` | To decide how often a sample must look non noisy across repeated random sampling. | float | 0.7 | ✅ true |
-| `iter` | `int` | Controls how many times the full CRF process is repeated. | integer | 101 | ✅ true |
-| `ntree` | `int` | Number of decision trees in each complete random forest. | integer | 201 | ✅ true |
-| `label_threshold` | `boolean` | Number of change sequence happens in leaf nodes of CRF to detect tree label | integer | 2 | ✅ true |
-| `typical_threshold` | `boolean` | To decide if a subject is typical or noisy. If score ≥ this threshold, subject is kept as typical subject | float | 0.8 | ✅ true |
+| Variable Name | Type      | Description                                                                                                                       | Allowed Options | Default | Required |
+| --- |-----------|-----------------------------------------------------------------------------------------------------------------------------------| --- |---------| --- |
+| `SamplingThreshold` | `float`   | To decide how often a sample must look non noisy across repeated random sampling.                                                 | float | 0.7     | ✅ true |
+| `Iteration` | `int`     | Controls how many times the full CRF process is repeated.                                                                         | integer | 101     | ✅ true |
+| `NTree` | `int`     | Number of decision trees in each complete random forest.                                                                          | integer | 201     | ✅ true |
+| `LabelThreshold` | `boolean` | Number of change sequence happens in leaf nodes of CRF to detect tree label                                                       | integer | 2       | ✅ true |
+| `TypicalThreshold` | `boolean` | To decide if a subject is typical or noisy. If score ≥ this threshold, subject is kept as typical subject                         | float | 0.8     | ✅ true |
+| `TruncationParameter` | `float`   | It trims the extreme x% from both sides of the negative and positive score distributions before computing the boundary threshold. | float | 0.2     | ✅ true |
 
 ### Input Description
 

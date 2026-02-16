@@ -1,0 +1,24 @@
+{
+  "format_version": 2,
+  "server": {
+    "heart_beat_timeout": 600
+  },
+  "task_data_filters": [],
+  "task_result_filters": [],
+  "components": [
+    {
+      "id": "fed_lamp_aggregator",
+      "path": "aggregator.aggregator.LAMPAggregator",
+      "args": {
+      }
+    }
+  ],
+  "workflows": [
+    {
+      "id": "fed_lamp_controller",
+      "path": "controller.controller.LAMPController",
+      "args": {
+      }
+    }
+  ]
+}
