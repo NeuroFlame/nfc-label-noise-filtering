@@ -85,3 +85,9 @@ The key steps of the algorithm include:
 *   **Output files:**  site1.csv, `Original group Global Avg: HC.png`, `Original group Global Avg: SZ.png`, `Relabeled group Global Avg: HC.png`, `Relabeled group Global Avg: SZ.png`
 
     * Two-sample t-tests on FNC (Original vs. Relabeled)
+
+### Developer Setup:
+
+1. Clone the Repo
+2. Build and run Docker file with: `./dockerRun.sh`
+3. Inside the docker terminal opened from above command, run the app with: `nvflare simulator -c site1,site2 ./app`
