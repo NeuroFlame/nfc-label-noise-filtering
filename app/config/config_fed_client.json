@@ -1,0 +1,19 @@
+{
+  "format_version": 2,
+  "executors": [
+    {
+      "tasks": [
+        "perform_local_crf",
+        "calculate_dimensional_score",
+        "perform_relabelling_data"
+      ],
+      "executor": {
+        "path": "executor.executor.LAMPExecutor",
+        "args": {}
+      }
+    }
+  ],
+  "task_result_filters": [],
+  "task_data_filters": [],
+  "components": []
+}
