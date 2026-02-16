@@ -111,35 +111,35 @@ class LAMPController(Controller):
 
         aggregate_result = self.aggregator.aggregate(fl_ctx)
 
-        # # Increment iteration number after every aggregation
-        # fl_ctx.set_prop(key="CURRENT_ROUND", value=1)
-        # self.log.info('Iteration: ', 1)
-        #
-        # # Broadcast the global aggregated results to all sites
-        # self._broadcast_task(
-        #     task_name=DIMENSIONAL_SCORE,
-        #     data=aggregate_result,
-        #     result_cb=self._accept_site_regression_result,
-        #     fl_ctx=fl_ctx,
-        #     abort_signal=abort_signal,
-        # )
-        #
-        # aggregate_result = self.aggregator.aggregate(fl_ctx)
-        #
-        # # Increment iteration number after every aggregation
-        # fl_ctx.set_prop(key="CURRENT_ROUND", value=2)
-        # self.log.info('Iteration: ', 2)
-        #
-        # # Broadcast the global aggregated results to all sites
-        # self._broadcast_task(
-        #     task_name=RELABEL_DATA,
-        #     data=aggregate_result,
-        #     result_cb=self._accept_site_regression_result,
-        #     fl_ctx=fl_ctx,
-        #     abort_signal=abort_signal,
-        # )
-        #
-        # self.aggregator.aggregate(fl_ctx)
+        # Increment iteration number after every aggregation
+        fl_ctx.set_prop(key="CURRENT_ROUND", value=1)
+        self.log.info('Iteration: ', 1)
+
+        # Broadcast the global aggregated results to all sites
+        self._broadcast_task(
+            task_name=DIMENSIONAL_SCORE,
+            data=aggregate_result,
+            result_cb=self._accept_site_regression_result,
+            fl_ctx=fl_ctx,
+            abort_signal=abort_signal,
+        )
+
+        aggregate_result = self.aggregator.aggregate(fl_ctx)
+
+        # Increment iteration number after every aggregation
+        fl_ctx.set_prop(key="CURRENT_ROUND", value=2)
+        self.log.info('Iteration: ', 2)
+
+        # Broadcast the global aggregated results to all sites
+        self._broadcast_task(
+            task_name=RELABEL_DATA,
+            data=aggregate_result,
+            result_cb=self._accept_site_regression_result,
+            fl_ctx=fl_ctx,
+            abort_signal=abort_signal,
+        )
+
+        self.aggregator.aggregate(fl_ctx)
         self.log.close()
 
     def _accept_site_regression_result(self, client_task: ClientTask, fl_ctx: FLContext) -> bool:

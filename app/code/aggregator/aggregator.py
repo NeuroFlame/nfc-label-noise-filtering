@@ -86,7 +86,7 @@ class LAMPAggregator(Aggregator):
         contribution_round = fl_ctx.get_prop(key="CURRENT_ROUND",
                                              default=None)
         self.logger.info('aggregation round: ', contribution_round)
-        computation_params = get_computation_parameters(fl_ctx)
+        computation_params = fl_ctx.get_prop('COMPUTATION_PARAMETERS')
         config: ConfigDTO = ConfigDTO(
             data_path = None,
             cache_path = self.agg_cache_dir,
@@ -101,21 +101,16 @@ class LAMPAggregator(Aggregator):
             if contribution_round == 0:
                 agg_result = methods.collect_local_models(
                     self.site_results[contribution_round], config)
-                self.agg_cache.update(agg_result['cache'])
                 outgoing_shareable['result'] = agg_result['output']
 
             elif contribution_round == 1:
                 agg_result = methods.perform_adaptive_thresolding(
                     self.site_results[contribution_round], config)
-                self.agg_cache.update(agg_result['cache'])
                 outgoing_shareable['result'] = agg_result['output']
 
             elif contribution_round == 2:
-                agg_result = methods.print_relabeled_metrics(
+                methods.print_relabeled_metrics(
                     self.site_results[contribution_round], config)
-                self.agg_cache.update(agg_result['cache'])
-                outgoing_shareable['result'] = agg_result['output']
-
                 self.logger.close()
                 shutil.rmtree(self.agg_cache_dir, ignore_errors=True)
             return outgoing_shareable

@@ -78,17 +78,14 @@ class LAMPExecutor(Executor):
                 rng_round = Generator(PCG64(round_ss))
 
                 client_result = service.perform_local_crf(config, rng_round, global_seed)
-                cache_dict.update_cache_dict(client_result['cache'])
                 outgoing_shareable['result'] = client_result['output']
 
             elif task_name == DIMENSIONAL_SCORE:
                 client_result = service.calculate_dimensional_score(shareable, config)
-                cache_dict.update_cache_dict(client_result['cache'])
                 outgoing_shareable['result'] = client_result['output']
 
             elif task_name == RELABEL_DATA:
                 client_result = service.relabel_data(shareable, config)
-                cache_dict.update_cache_dict(client_result['cache'])
                 outgoing_shareable['result'] = client_result['output']
                 cache_dict.remove_cache()
 

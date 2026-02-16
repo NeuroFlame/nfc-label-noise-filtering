@@ -1,5 +1,8 @@
 #!/bin/bash
 
+IMAGE_NAME="nvflare_lamp"
+docker build -t $IMAGE_NAME -f Dockerfile-dev .
+
 # Get the absolute path of the script's location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_WORKSPACE="$SCRIPT_DIR"
@@ -11,7 +14,7 @@ echo "Using REMOTE_WORKSPACE: $REMOTE_WORKSPACE"
 # Run Docker, disabling path conversion on Windows
 MSYS_NO_PATHCONV=1 docker run --rm -it \
     --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 \
-    --name nvflare-dev \
+    --name $IMAGE_NAME \
     -v "$LOCAL_WORKSPACE:$REMOTE_WORKSPACE" \
     -w "$REMOTE_WORKSPACE" \
-    nvflare-dev:latest
+    $IMAGE_NAME:latest

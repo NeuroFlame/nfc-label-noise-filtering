@@ -125,30 +125,24 @@ def crf_v1(train_data: np.ndarray, parameters: ComputationParamDTO, rng: Generat
         (train_data, np.arange(1, subjects_count + 1).reshape(-1, 1))
     )
 
-    # final_output_1= np.empty(ntree, dtype=np.ndarray)
-    # final_output_2= np.empty(ntree, dtype=np.ndarray)
-
-    final_output_1 = Parallel(
-        n_jobs=8,
-        prefer="processes",
-        batch_size="auto"
-    )(
-        delayed(build_crf_results_iter)(
-            train_data, is_continuous_data, 1, ss_f1[_]
+    with Parallel(
+            n_jobs=8,
+            prefer="processes",
+            batch_size="auto"
+    ) as parallel:
+        final_output_1 = parallel(
+            delayed(build_crf_results_iter)(
+                train_data, is_continuous_data, 1, ss_f1[_]
+            )
+            for _ in range(total_trees)
         )
-        for _ in range(total_trees)
-    )
 
-    final_output_2 = Parallel(
-        n_jobs=8,
-        prefer="processes",
-        batch_size="auto"
-    )(
-        delayed(build_crf_results_iter)(
-            train_data, is_continuous_data, 2, ss_f2[_]
+        final_output_2 = parallel(
+            delayed(build_crf_results_iter)(
+                train_data, is_continuous_data, 2, ss_f2[_]
+            )
+            for _ in range(total_trees)
         )
-        for _ in range(total_trees)
-    )
 
     # for i in range(ntree):
     #     final_output_1[i] = crf.build_crf_results_iter(train_data, is_continuous_data, 1)

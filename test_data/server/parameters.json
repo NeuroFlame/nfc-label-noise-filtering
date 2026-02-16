@@ -7,10 +7,12 @@
   "TruncationParameter": 0.2,
   "LabelDefinition": {
     "1": {
-      "name": "SZ"
+      "name": "SZ",
+      "label": 1
     },
     "2": {
-      "name": "HC"
+      "name": "HC",
+      "label": 2
     }
   },
   "LogLevel": "error"
