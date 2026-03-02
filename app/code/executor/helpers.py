@@ -19,7 +19,7 @@ class SourceDataKeys(Enum):
     SFNC = 'sFNC'
 
 
-def convert_fnc_to_features(original_dataset, dest_path: str, name: str):
+def convert_fnc_to_features_from_mat(original_dataset, dest_path: str, name: str):
 
     # --- find diagnosis column (case-insensitive) ---
     file_ids = original_dataset[SourceDataKeys.FILE_ID.value]
@@ -76,7 +76,7 @@ def find_typical_subjects(
     return np.array(typical_hc), np.array(typical_sz)
 
 def upper_triangle_bonferroni(t_values: np.ndarray, p_values: np.ndarray, alpha=0.01):
-    n = 53
+    n = t_values.shape[0] #53
     upper_triangle_indexes = np.triu_indices(n, k=1)  # strict upper-triangle indices
     m_tests = len(upper_triangle_indexes[0])  # 53*52/2 = 1378
     bonferroni_correction_value = alpha / m_tests
