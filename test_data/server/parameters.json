@@ -15,5 +15,8 @@
       "label": 2
     }
   },
+  "isControlLabel": "HC",
+  "FNCDomainNames" :  [0, 5, 7, 16, 25, 42, 49, 53],
+  "IgnoreSubjectsWithMissingData" : true,
   "LogLevel": "error"
 }

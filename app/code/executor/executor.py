@@ -54,17 +54,17 @@ class LAMPExecutor(Executor):
         logger = NvFlareLogger(client_log_name, output_path,
                                computation_params.get("LogLevel"))
 
-        cache_dict = cache.CacheSerialStore(
+        cache_store = cache.CacheSerialStore(
             get_output_directory_path(fl_ctx))
 
         config: ConfigDTO = ConfigDTO(
             data_path=get_data_directory_path(fl_ctx),
             output_path=output_path,
-            cache_path=cache_dict.get_cache_dir(),
+            cache_path=cache_store.get_cache_dir(),
             computation_params=computation_params,
             logger=logger,
             site_name=client_name,
-            cache_dict=cache_dict.get_cache_dict()
+            cache_dict=cache_store.get_cache_dict()
         )
 
         # Prepare the Shareable object to send the result to other
@@ -78,16 +78,19 @@ class LAMPExecutor(Executor):
                 rng_round = Generator(PCG64(round_ss))
 
                 client_result = service.perform_local_crf(config, rng_round, global_seed)
+                cache_store.update_cache_dict(client_result.get('cache', {}))
                 outgoing_shareable['result'] = client_result['output']
 
             elif task_name == DIMENSIONAL_SCORE:
                 client_result = service.calculate_dimensional_score(shareable, config)
+                cache_store.update_cache_dict(client_result.get('cache', {}))
                 outgoing_shareable['result'] = client_result['output']
 
             elif task_name == RELABEL_DATA:
                 client_result = service.relabel_data(shareable, config)
+                cache_store.update_cache_dict(client_result.get('cache', {}))
                 outgoing_shareable['result'] = client_result['output']
-                cache_dict.remove_cache()
+                cache_store.remove_cache()
 
             else:
                 raise ValueError({

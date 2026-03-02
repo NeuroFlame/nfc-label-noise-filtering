@@ -60,9 +60,8 @@ class NvFlareLogger:
         logger.close()  # Always close the logger when done.
     """
     def __init__(self, filename: str, filePath: str, log_level: str):
-        self.filename = filename
-        self.filePath = os.path.join(filePath, filename)
-        self.file = open(self.filePath, "a", encoding="utf-8")
+        self.file_name_with_path = os.path.join(filePath, filename)
+        self.file = open(self.file_name_with_path, "a", encoding="utf-8")
         # Set logging threshold (lower numeric value means more verbose)
         self.level = log_level if log_level in LEVELS else os.environ.get('LOG_LEVEL', 'error') 
         self.level_threshold = LEVELS.get(self.level, 10)
@@ -140,3 +139,7 @@ class NvFlareLogger:
         """Closes the log file."""
         if self.file:
             self.file.close()
+
+    def get_file_name_with_path(self):
+        """Returns file name with path."""
+        return self.file_name_with_path

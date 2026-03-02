@@ -58,7 +58,7 @@ def perform_local_step_1(site_name: str, data_path: str, output_path: str, rng: 
         ],
     )
 
-    data = utils.convert_fnc_to_features(original_dataset, output_path, site_name)
+    data = utils.convert_fnc_to_features_from_mat(original_dataset, output_path, site_name)
 
     # data_path = os.path.join(output_path, f'{site_name}.mat')
     # data = data_loaders.load_result_matfile(data_path)[site_name]
