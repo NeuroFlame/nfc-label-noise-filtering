@@ -5,7 +5,8 @@
       "tasks": [
         "perform_local_crf",
         "calculate_dimensional_score",
-        "perform_relabelling_data"
+        "perform_relabelling_data",
+        "generate_report"
       ],
       "executor": {
         "path": "executor.executor.LAMPExecutor",
