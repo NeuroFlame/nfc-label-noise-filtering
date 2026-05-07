@@ -2,6 +2,7 @@
 PERFORM_LOCAL_CRF = "perform_local_crf"
 DIMENSIONAL_SCORE = "calculate_dimensional_score"
 RELABEL_DATA = "perform_relabelling_data"
+GENERATE_REPORT = "generate_report"
 
 # Aggregator IDs
 # Hint: Make sure to have same name in both config_fed_server.json
