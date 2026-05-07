@@ -11,8 +11,7 @@ from scipy.io import savemat
 
 from utils.helpers import fnc_heatmap
 from utils.types import ConfigDTO
-from . import data_loaders, find_scores
-from Models import MatfileModel
+from . import data_loaders, find_scores, report_generator
 from .crf import crf
 from .helpers import (
     convert_fnc_to_features_from_mat,
@@ -129,12 +128,14 @@ def perform_local_crf(config: ConfigDTO, rng: Generator, global_seed: int = 0) -
 
 def calculate_dimensional_score(shareable: Shareable, config: ConfigDTO):
     site_results = shareable.get('result')
+    site_id_name_map = config.computation_params.get('site_id_name_map', {})
+    resolved_site_name = site_id_name_map.get(config.site_name, config.site_name)
     out_path = os.path.join(config.output_path, f'{config.site_name}_orig.mat')
     ind_site_data: np.ndarray = data_loaders.load_result_matfile(out_path).get(config.site_name)
     site_scores = pd.DataFrame(columns=list(site_results.keys()))
 
     for site in site_results:
-        if site == config.site_name:
+        if site == resolved_site_name:
             site_scores[site] = ind_site_data[:, -1]
             continue
 
@@ -159,7 +160,7 @@ def calculate_dimensional_score(shareable: Shareable, config: ConfigDTO):
         site_scores[site] = scores
 
     num_cols = site_scores.select_dtypes(
-        include=[np.number]).columns.drop(config.site_name)
+        include=[np.number]).columns.drop(resolved_site_name)
     site_scores["average"] = site_scores[num_cols].replace(
         0, np.nan).mean(axis=1, skipna=True)
     site_scores["average"] = site_scores["average"].fillna(0)
@@ -193,14 +194,9 @@ def relabel_data(shareable: Shareable, config: ConfigDTO):
     scores_df.to_csv(scores_path)
 
     """Two Sample t-test of relabeled subjects"""
-    file_path = os.path.join(config.data_path, 'data.mat')
-    original_dataset = data_loaders.load_data_matfile(
-        file_path,
-        name=[
-            MatfileModel.SourceDataKeys.SFNC.value,
-        ],
-    )
-    X = original_dataset[MatfileModel.SourceDataKeys.SFNC.value]
+    orig_path = os.path.join(config.output_path, f'{config.site_name}_orig.mat')
+    orig_data = data_loaders.load_result_matfile(orig_path)[config.site_name]
+    X = get_complete_FNC_matrix_data(orig_data[:, :-1])
     t_values, p_values = compute_two_sample_ttest(X, re_labels)
     corrected_t_values = upper_triangle_bonferroni(t_values, p_values)
     label1 = computation_params.get('LabelDefinition').get("1").get('name')
@@ -239,3 +235,41 @@ def relabel_data(shareable: Shareable, config: ConfigDTO):
     return {
         'output': relabeled_aggregated_fnc_result
     }
+
+
+def generate_site_report(shareable: Shareable, config) -> None:
+    global_data = shareable.get('result', {})
+    global_avg_fnc_original = global_data.get('global_avg_fnc_original', {})
+    global_avg_fnc_relabeled = global_data.get('global_avg_fnc_relabeled', {})
+    adaptive_threshold = global_data.get('adaptive_threshold', 0.0)
+
+    parameters = config.computation_params
+    label_def = parameters.get('LabelDefinition', {})
+    domain_names = parameters.get('FNCDomainNames', client_constants.DEFAULT_FNCDomainNames)
+
+    for label, matrix in global_avg_fnc_original.items():
+        label_name = label_def.get(str(label), {}).get('name', str(label))
+        fnc_heatmap(matrix, {
+            'colorbar_name': 'Avg FNC Values',
+            'title': f'Global Average FNC of Original {label_name} Subjects',
+            'path': config.output_path,
+            'name': f'global_original_avg_fnc_{label_name}.png',
+            'domain_names': domain_names,
+        })
+
+    for label, matrix in global_avg_fnc_relabeled.items():
+        label_name = label_def.get(str(label), {}).get('name', str(label))
+        fnc_heatmap(matrix, {
+            'colorbar_name': 'Avg FNC Values',
+            'title': f'Global Average FNC of Relabeled {label_name} Subjects',
+            'path': config.output_path,
+            'name': f'global_relabeled_avg_fnc_{label_name}.png',
+            'domain_names': domain_names,
+        })
+
+    scores_path = os.path.join(config.output_path, f'{config.site_name}_relabeled.csv')
+    scores_df = pd.read_csv(scores_path) if os.path.exists(scores_path) else None
+
+    html = report_generator.generate_report_html(config, scores_df, adaptive_threshold)
+    with open(os.path.join(config.output_path, 'index.html'), 'w') as f:
+        f.write(html)

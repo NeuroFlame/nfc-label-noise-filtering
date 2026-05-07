@@ -50,7 +50,8 @@ def collect_local_models(site_results: Dict[str, Any], config: ConfigDTO):
         })
 
     return {
-        'output': site_centroids
+        'output': site_centroids,
+        'cache': {'global_avg_fnc_original': global_avg_fnc},
     }
 
 def perform_adaptive_thresolding(site_results: Dict[str, np.ndarray], config: ConfigDTO):
@@ -111,7 +112,8 @@ def perform_adaptive_thresolding(site_results: Dict[str, np.ndarray], config: Co
     print("adaptive thresholding: ", t)
 
     return {
-        'output': t
+        'output': t,
+        'cache': {'adaptive_threshold': t},
     }
 
 def print_relabeled_metrics(site_results: Dict[str, np.ndarray], config: ConfigDTO):
@@ -126,20 +128,12 @@ def print_relabeled_metrics(site_results: Dict[str, np.ndarray], config: ConfigD
         for label in labels:
             global_avg_per_label[label].append(site_results[site][label])
 
-    global_result_path = os.path.join(config.output_path, 'global_results')
-    os.makedirs(global_result_path, exist_ok=True)
-    parameters = config.computation_params
+    global_avg_fnc_relabeled = global_mean_from_sites(global_avg_per_label)
 
-    global_avg_fnc = global_mean_from_sites(global_avg_per_label)
-    for label in labels:
-        str_label = str(label)
-        label_name = parameters.get("LabelDefinition").get(str_label).get('name')
-        fnc_heatmap(global_avg_fnc[label], {
-            'colorbar_name': 'Avg FNC Values',
-            'title': f'Average FNC of Relabeled {label_name} Subjects',
-            'path': global_result_path,
-            'name': f'global_relabeled_avg_fnc_{label_name}.png',
-            'domain_names': [0, 5, 7, 16, 25, 42, 49, 53],
-        })
-
-    return None
+    return {
+        'output': {
+            'global_avg_fnc_original': config.cache_dict.get('global_avg_fnc_original', {}),
+            'global_avg_fnc_relabeled': global_avg_fnc_relabeled,
+            'adaptive_threshold': config.cache_dict.get('adaptive_threshold', 0.0),
+        }
+    }

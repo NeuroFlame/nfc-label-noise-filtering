@@ -36,12 +36,15 @@ class LAMPAggregator(Aggregator):
         :param fl_ctx: The federated learning context for this run.
         :return: Boolean indicating if the result was successfully accepted.
         """
-        site_name = site_result.get_peer_prop(
+        site_id = site_result.get_peer_prop(
             key=ReservedKey.IDENTITY_NAME, default=None)
+        computation_parameters = fl_ctx.get_prop(key="COMPUTATION_PARAMETERS", default={})
+        site_id_name_map = computation_parameters.get("site_id_name_map", {})
+        site_name = site_id_name_map.get(site_id, site_id)
         contribution_round = fl_ctx.get_prop(key="CURRENT_ROUND",
                                              default=None)
 
-        if contribution_round is None or site_name is None:
+        if contribution_round is None or site_id is None:
             return False
 
         if contribution_round not in self.site_results:
@@ -63,7 +66,7 @@ class LAMPAggregator(Aggregator):
 
         # Store the result for the site using its identity name as the key
         self.site_results[contribution_round][site_name] = (
-            site_result["result"]
+            site_result.get("result")
         )
 
         self.logger.info('accepting site result from: ', site_name,
@@ -101,16 +104,19 @@ class LAMPAggregator(Aggregator):
             if contribution_round == 0:
                 agg_result = methods.collect_local_models(
                     self.site_results[contribution_round], config)
+                self.agg_cache.update(agg_result.get('cache', {}))
                 outgoing_shareable['result'] = agg_result['output']
 
             elif contribution_round == 1:
                 agg_result = methods.perform_adaptive_thresolding(
                     self.site_results[contribution_round], config)
+                self.agg_cache.update(agg_result.get('cache', {}))
                 outgoing_shareable['result'] = agg_result['output']
 
             elif contribution_round == 2:
-                methods.print_relabeled_metrics(
+                agg_result = methods.print_relabeled_metrics(
                     self.site_results[contribution_round], config)
+                outgoing_shareable['result'] = agg_result['output']
                 self.logger.close()
                 shutil.rmtree(self.agg_cache_dir, ignore_errors=True)
             return outgoing_shareable
