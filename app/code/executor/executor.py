@@ -7,7 +7,7 @@ from nvflare.apis.shareable import Shareable
 from nvflare.apis.signal import Signal
 
 from utils.logger import NvFlareLogger
-from utils.task_constants import PERFORM_LOCAL_CRF, DIMENSIONAL_SCORE, RELABEL_DATA
+from utils.task_constants import PERFORM_LOCAL_CRF, DIMENSIONAL_SCORE, RELABEL_DATA, GENERATE_REPORT
 from utils.types import ConfigDTO
 from utils.utils import get_computation_parameters, get_output_directory_path, get_data_directory_path
 
@@ -90,7 +90,11 @@ class LAMPExecutor(Executor):
                 client_result = service.relabel_data(shareable, config)
                 cache_store.update_cache_dict(client_result.get('cache', {}))
                 outgoing_shareable['result'] = client_result['output']
+
+            elif task_name == GENERATE_REPORT:
+                service.generate_site_report(shareable, config)
                 cache_store.remove_cache()
+                outgoing_shareable['result'] = None
 
             else:
                 raise ValueError({

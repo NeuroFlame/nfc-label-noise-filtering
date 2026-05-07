@@ -9,7 +9,7 @@ from nvflare.apis.shareable import Shareable
 from nvflare.apis.signal import Signal
 
 from utils.logger import NvFlareLogger
-from utils.task_constants import LAMP_AGGREGATOR_ID, PERFORM_LOCAL_CRF, DIMENSIONAL_SCORE, RELABEL_DATA
+from utils.task_constants import LAMP_AGGREGATOR_ID, PERFORM_LOCAL_CRF, DIMENSIONAL_SCORE, RELABEL_DATA, GENERATE_REPORT
 from utils.utils import get_output_directory_path, get_parameters_file_path
 
 
@@ -139,7 +139,19 @@ class LAMPController(Controller):
             abort_signal=abort_signal,
         )
 
-        self.aggregator.aggregate(fl_ctx)
+        aggregate_result = self.aggregator.aggregate(fl_ctx)
+
+        fl_ctx.set_prop(key="CURRENT_ROUND", value=3)
+        self.log.info('Iteration: ', 3)
+
+        self._broadcast_task(
+            task_name=GENERATE_REPORT,
+            data=aggregate_result,
+            result_cb=self._accept_site_regression_result,
+            fl_ctx=fl_ctx,
+            abort_signal=abort_signal,
+        )
+
         self.log.close()
 
     def _accept_site_regression_result(self, client_task: ClientTask, fl_ctx: FLContext) -> bool:
