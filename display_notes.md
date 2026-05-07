@@ -6,23 +6,23 @@ This paper presents Fed LAMP, a label noise filtering based dimensional predicti
 
 ```json
 {
-    "SamplingThreshold": "float",
-    "Iteration": "int",
-    "NTree": "int",
-    "LabelThreshold": "float",
-    "TypicalThreshold": "float",
-    "TruncationParameter": "float",
+    "SamplingThreshold": 0.7,
+    "Iteration": 101,
+    "NTree": 201,
+    "LabelThreshold": 2,
+    "TypicalThreshold": 0.8,
+    "TruncationParameter": 0.2,
     "LabelDefinition": {
         "1": {
-          "name": "str",
-          "label": "any"
+          "name": "SZ",
+          "label": 1
         },
         "2": {
-          "name": "str",
-          "label": "any"
+          "name": "HC",
+          "label": 2
         }
     },
-    "LogLevel": "str"
+    "LogLevel": "info"
 }
 ```
 
@@ -33,20 +33,19 @@ This paper presents Fed LAMP, a label noise filtering based dimensional predicti
 | `SamplingThreshold` | `float`   | To decide how often a sample must look non noisy across repeated random sampling.                                                 | float | 0.7     | ✅ true |
 | `Iteration` | `int`     | Controls how many times the full CRF process is repeated.                                                                         | integer | 101     | ✅ true |
 | `NTree` | `int`     | Number of decision trees in each complete random forest.                                                                          | integer | 201     | ✅ true |
-| `LabelThreshold` | `boolean` | Number of change sequence happens in leaf nodes of CRF to detect tree label                                                       | integer | 2       | ✅ true |
-| `TypicalThreshold` | `boolean` | To decide if a subject is typical or noisy. If score ≥ this threshold, subject is kept as typical subject                         | float | 0.8     | ✅ true |
+| `LabelThreshold` | `int`     | Number of change sequence happens in leaf nodes of CRF to detect tree label                                                       | integer | 2       | ✅ true |
+| `TypicalThreshold` | `float`   | To decide if a subject is typical or noisy. If score ≥ this threshold, subject is kept as typical subject                         | float | 0.8     | ✅ true |
 | `TruncationParameter` | `float`   | It trims the extreme x% from both sides of the negative and positive score distributions before computing the boundary threshold. | float | 0.2     | ✅ true |
+| `LabelDefinition` | `object`  | Maps integer label keys to `{name, label}` objects defining each class (e.g. `"1": {"name": "SZ", "label": 1}`)                  | — | —       | ✅ true |
 
 ### Input Description
 
-Each site required to provide a path to `.mat` file as input for this computation and must be in the below format:
+Each site is required to provide two CSV files:
 
-    - FILE_ID = 'FILE_ID':
-    - ANALYSIS_ID = 'analysis_ID'
-    - ANALYSIS_SCORE = 'analysis_SCORE'
-    - SFNC = 'sFNC'
+- `data.csv` — rows are subjects, columns are FNC features followed by a label column
+- `labels.csv` — subject labels (one per row, matching the order in `data.csv`)
 
-Please check the sample files in the `nvflare_code/test_data/site1/data.mat` which FBIRN data format.
+Sample files are available in `test_data/site1/` and `test_data/site2/`.
 
 ### Algorithm Description
 
@@ -80,8 +79,23 @@ The key steps of the algorithm include:
 
     * Over iterations, typical subjects become cleaner, intra-group compactness improves, and inter-group differences become more stable.
 
+6. **Federated Report Generation**:
+
+    * After relabeling, the aggregator combines the per-site relabeled FNC averages into global group averages (one per label) and broadcasts them back to all sites along with the adaptive threshold value.
+
+    * Each site uses this global data together with its local results to generate a self-contained `index.html` report containing: label distribution KPIs, Bonferroni-corrected T-test heatmaps (original vs. relabeled), local and global average FNC heatmaps, and a per-subject dimensional score table with dark-mode support.
+
 ### Output Description
 
-*   **Output files:**  site1.csv, `Original group Global Avg: HC.png`, `Original group Global Avg: SZ.png`, `Relabeled group Global Avg: HC.png`, `Relabeled group Global Avg: SZ.png`
+Each site produces the following files:
 
-    * Two-sample t-tests on FNC (Original vs. Relabeled)
+| File | Description |
+| --- | --- |
+| `{site_name}_relabeled.csv` | Per-subject dimensional scores and re-assigned labels (−1 = uncertain) |
+| `index.html` | Self-contained HTML report with KPIs, heatmaps, and scores table |
+| `original_labels_ttest.png` | Bonferroni-corrected T-test heatmap using original labels |
+| `re_labeled_ttest.png` | Bonferroni-corrected T-test heatmap using relabeled subjects |
+| `local_original_avg_fnc_{label}.png` | Local average FNC per group before relabeling |
+| `local_relabeled_avg_fnc_{label}.png` | Local average FNC per group after relabeling |
+| `global_original_avg_fnc_{label}.png` | Federated average FNC per group before relabeling |
+| `global_relabeled_avg_fnc_{label}.png` | Federated average FNC per group after relabeling |
