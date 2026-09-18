@@ -1,6 +1,10 @@
 {
-    "user_ids": ["user1", "user2"],
-    "computation_parameters": "None",
+    "users": [
+        {"id": "66289c79aebab67040a20068", "name": "site1"},
+        {"id": "66289c79aebab67040a20069", "name": "site2"},
+        {"id": "66289c79aebab67040a20070", "name": "site3"}
+    ],
+    "computation_parameters": "{\"LabelDefinition\": {\"1\": {\"name\": \"control\", \"label\": 1}, \"2\": {\"name\": \"patient\", \"label\": 2}}, \"isControlLabel\": \"control\", \"IgnoreSubjectsWithMissingData\": \"False\", \"LogLevel\": \"info\"}",
     "fed_learn_port": 5000,
     "admin_port": 5001,
     "host_identifier": "host1"

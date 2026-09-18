@@ -3,3 +3,16 @@ paper/
 simulator_workspace/
 job/
 test_output/
+.git
+.venv
+__pycache__
+*.py[cod]
+*.tgz
+*.tar
+*.tar.gz
+.ruff_cache
+job
+poc-workspace
+simulator_workspace
+startupKits
+test_output
