@@ -87,11 +87,11 @@ The key steps of the algorithm include:
 
 ### Output Description
 
-Each site produces the following files:
+Each site produces the following files, in its own output directory:
 
 | File | Description |
 | --- | --- |
-| `{site_name}_relabeled.csv` | Per-subject dimensional scores and re-assigned labels (−1 = uncertain) |
+| `relabeled.csv` | Per-subject dimensional scores and re-assigned labels (−1 = uncertain) |
 | `index.html` | Self-contained HTML report with KPIs, heatmaps, and scores table |
 | `original_labels_ttest.png` | Bonferroni-corrected T-test heatmap using original labels |
 | `re_labeled_ttest.png` | Bonferroni-corrected T-test heatmap using relabeled subjects |
@@ -99,3 +99,8 @@ Each site produces the following files:
 | `local_relabeled_avg_fnc_{label}.png` | Local average FNC per group after relabeling |
 | `global_original_avg_fnc_{label}.png` | Federated average FNC per group before relabeling |
 | `global_relabeled_avg_fnc_{label}.png` | Federated average FNC per group after relabeling |
+| `orig.mat`, `crf.mat`, `centers.npz` | Diagnostic intermediates (validated input data, CRF results, typical-subject centroids) |
+
+### Boilerplate Migration
+
+This computation runs on the `computation-nvflare-boilerplate` `framework`/`runtime` architecture; authors work only inside `app/code/computation/`. See [MIGRATION_NOTES.md](MIGRATION_NOTES.md) for what changed from the prior hand-written NVFlare architecture and how the migration was verified.

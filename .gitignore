@@ -1,4 +1,12 @@
+__pycache__/
+*.py[cod]
+.ruff_cache/
 .venv/
+simulator_workspace/
+test_output/simulate_job/
+poc-workspace/
+job/
+
 data/
 original_dataset/
 matlab/
@@ -7,10 +15,6 @@ results/
 dataset/
 demo.ipynb
 *.log
-__pycache__
-test_output/
 *.err
 *.out
 .idea/
-simulator_workspace/
-job/
