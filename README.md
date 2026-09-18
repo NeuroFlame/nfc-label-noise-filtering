@@ -6,23 +6,26 @@ This paper presents Fed LAMP, a label noise filtering based dimensional predicti
 
 ```json
 {
-    "SamplingThreshold": 0.7,
-    "Iteration": 101,
-    "NTree": 201,
-    "LabelThreshold": 2,
-    "TypicalThreshold": 0.8,
-    "TruncationParameter": 0.2,
-    "LabelDefinition": {
-        "1": {
-          "name": "SZ",
-          "label": 1
-        },
-        "2": {
-          "name": "HC",
-          "label": 2
-        }
+  "SamplingThreshold": 0.7,
+  "Iteration": 101,
+  "NTree": 201,
+  "LabelThreshold": 2,
+  "TypicalThreshold": 0.8,
+  "TruncationParameter": 0.2,
+  "LabelDefinition": {
+    "1": {
+      "name": "SZ",
+      "label": 1
     },
-    "LogLevel": "info"
+    "2": {
+      "name": "HC",
+      "label": 2
+    }
+  },
+  "isControlLabel": "HC",
+  "FNCDomainNames" :  [0, 5, 7, 16, 25, 42, 49, 53],
+  "IgnoreSubjectsWithMissingData" : true,
+  "LogLevel": "info"
 }
 ```
 
