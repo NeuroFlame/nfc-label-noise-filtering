@@ -6,23 +6,26 @@ This paper presents Fed LAMP, a label noise filtering based dimensional predicti
 
 ```json
 {
-    "SamplingThreshold": 0.7,
-    "Iteration": 101,
-    "NTree": 201,
-    "LabelThreshold": 2,
-    "TypicalThreshold": 0.8,
-    "TruncationParameter": 0.2,
-    "LabelDefinition": {
-        "1": {
-          "name": "SZ",
-          "label": 1
-        },
-        "2": {
-          "name": "HC",
-          "label": 2
-        }
+  "SamplingThreshold": 0.7,
+  "Iteration": 101,
+  "NTree": 201,
+  "LabelThreshold": 2,
+  "TypicalThreshold": 0.8,
+  "TruncationParameter": 0.2,
+  "LabelDefinition": {
+    "1": {
+      "name": "SZ",
+      "label": 1
     },
-    "LogLevel": "info"
+    "2": {
+      "name": "HC",
+      "label": 2
+    }
+  },
+  "isControlLabel": "HC",
+  "FNCDomainNames" :  [0, 5, 7, 16, 25, 42, 49, 53],
+  "IgnoreSubjectsWithMissingData" : true,
+  "LogLevel": "info"
 }
 ```
 
@@ -86,8 +89,6 @@ The key steps of the algorithm include:
     * Each site uses this global data together with its local results to generate a self-contained `index.html` report containing: label distribution KPIs, Bonferroni-corrected T-test heatmaps (original vs. relabeled), local and global average FNC heatmaps, and a per-subject dimensional score table with dark-mode support.
 
 ### Output Description
-
-Each site produces the following files, in its own output directory:
 
 | File | Description |
 | --- | --- |
