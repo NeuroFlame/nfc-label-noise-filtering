@@ -1,5 +1,7 @@
 **Source code:** [https://github.com/NeuroFlame/nfc-label-noise-filtering](https://github.com/NeuroFlame/nfc-label-noise-filtering)
 
+&nbsp;
+
 ### Overview
 
 This paper presents Fed LAMP, a label noise filtering based dimensional prediction method called LAMP to improve biomarker discovery and prediction for mental disorders using fMRI data. The method uses a complete random forest model to identify typical subjects whose clinical labels are consistent with brain functional connectivity patterns. These reliable subjects are then used to build a dimensional model that assigns continuous scores reflecting disease severity to unseen subjects. Experiments on multi site schizophrenia and autism datasets show improved group separability, more stable biomarkers, and better generalization than traditional label based approaches. 
