@@ -8,3 +8,4 @@ DEFAULT_TypicalThreshold = 0.8
 DEFAULT_TruncationParameter = 0.2
 DEFAULT_IgnoreSubjectsWithMissingData = False
 DEFAULT_FNCDomainNames = []
+DEFAULT_LogLevel= "info"

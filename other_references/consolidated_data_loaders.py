@@ -1,7 +1,17 @@
 import h5py
 from scipy.io import loadmat
 import numpy as np
+from enum import Enum
 
+
+class SourceDataKeys(Enum):
+    """
+    Enum to represent different keys in the original mat file.
+    """
+    FILE_ID = 'FILE_ID'
+    ANALYSIS_ID = 'analysis_ID'
+    ANALYSIS_SCORE = 'analysis_SCORE'
+    SFNC = 'sFNC'
 
 def decode_utf16_array(array):
     """Decode MATLAB UTF-16 encoded uint16 arrays to strings."""

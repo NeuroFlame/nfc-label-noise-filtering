@@ -107,14 +107,21 @@ def perform_crf(
         )
     )
     # print("iteration matrix: ", final_mat)
+    # For non_noise_sampling_subjects, as each array is of different size,
+    # convert to a 1D NumPy array of 'object' type. This acts like a container and
+    # preserves the individual array shapes
+    non_noise_sampling_subjects_object_array = np.empty(len(non_noise_sampling_subjects), dtype=object)
+
+    for i, arr in enumerate(non_noise_sampling_subjects):
+        non_noise_sampling_subjects_object_array[i] = arr
 
     output_path = os.path.join(result_path, "crf.mat")
     savemat(
         output_path,
         {
             "count": final_mat,
-            "nltc_labels": nltc_decisions,
-            "non_noise_ind": non_noise_sampling_subjects,
+            'nltc_labels': np.asarray(nltc_decisions),
+            'non_noise_ind': non_noise_sampling_subjects_object_array
         },
         do_compression=True,
     )

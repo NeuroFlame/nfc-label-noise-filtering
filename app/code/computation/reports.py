@@ -23,7 +23,7 @@ def render_fnc_heatmap(
     max_value = np.nanmax(np.abs(fnc_matrix))
     max_value = max_value if np.isfinite(max_value) and max_value > 0 else 1.0
 
-    fig, ax = plt.subplots(figsize=(5.2, 5.2), dpi=180)
+    fig, ax = plt.subplots(figsize=(5.2, 5.2))
     im = ax.imshow(
         fnc_matrix, cmap="RdYlBu_r", vmin=-max_value, vmax=max_value, origin="upper"
     )
@@ -40,7 +40,7 @@ def render_fnc_heatmap(
         ax.set_title(title)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(output_dir, name))
+    plt.savefig(os.path.join(output_dir, name),  dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
