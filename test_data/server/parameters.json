@@ -5,17 +5,14 @@
   "LabelThreshold": 2,
   "TypicalThreshold": 0.8,
   "TruncationParameter": 0.2,
-  "LabelDefinition": {
-    "1": {
-      "name": "SZ",
-      "label": 1
-    },
-    "2": {
-      "name": "HC",
-      "label": 2
-    }
+  "ExistingDataFile" : "data.csv",
+  "LabelFile" : "labels.csv",
+  "ReadDataFileFromHalfpipeOutputs": {
+    "atlas": "schaefer2011",
+    "corr": "corrMatrix"
   },
-  "isControlLabel": "HC",
+  "ControlLabel": "HC",
+  "PatientLabel": "SZ",
   "FNCDomainNames" :  [0, 5, 7, 16, 25, 42, 49, 53],
   "IgnoreSubjectsWithMissingData" : true,
   "LogLevel": "error"

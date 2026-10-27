@@ -6,7 +6,7 @@ import re as _re
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-
+from . import constants
 
 def render_fnc_heatmap(
     fnc_matrix,
@@ -61,7 +61,10 @@ def generate_report_html(
     site_name, output_dir, scores_df, parameters, adaptive_threshold
 ):
     """Build the self-contained per-site HTML report."""
-    label_def = parameters.get("LabelDefinition", {})
+    patient_label =  parameters[constants.PARAM_KEY_PATIENT_LABEL] #label1
+    control_label =  parameters[constants.PARAM_KEY_CONTROL_LABEL]
+    label_def = constants.get_label_definitions(patient_label=patient_label, control_label=control_label)
+
     label_names = {str(k): v.get("name", str(k)) for k, v in label_def.items()}
 
     body = (
@@ -84,11 +87,14 @@ def generate_report_html(
     )
 
 
-def _build_header(site_name, params):
-    label_def = params.get("LabelDefinition", {})
+def _build_header(site_name, parameters):
+    patient_label =  parameters[constants.PARAM_KEY_PATIENT_LABEL] #label1
+    control_label =  parameters[constants.PARAM_KEY_CONTROL_LABEL]
+    label_def = constants.get_label_definitions(patient_label=patient_label, control_label=control_label)
+
     n_labels = len(label_def)
-    n_iter = params.get("Iteration", "—")
-    truncation = params.get("TruncationParameter", "—")
+    n_iter = parameters.get("Iteration", "—")
+    truncation = parameters.get("TruncationParameter", "—")
     label_pills = "".join(
         f'<span style="background:var(--chip-bg);border:1px solid var(--border);border-radius:999px;'
         f'padding:.2rem .65rem;font-size:.76rem;color:var(--chip-color)">{v.get("name", k)}</span>'
@@ -114,7 +120,7 @@ def _build_distribution_section(scores_df, label_def, adaptive_threshold):
         else pd.Series(dtype=float)
     )
     total = len(re_labels)
-    uncertain = int((re_labels == -1).sum()) if total > 0 else 0
+    uncertain = int((re_labels == constants.BOUNDARY_SUBJECT_LABEL_VALUE).sum()) if total > 0 else 0
 
     rows = ""
     for k, v in sorted(label_def.items()):
@@ -256,8 +262,8 @@ def _build_scores_table_section(scores_df):
         for c in cols:
             val = row[c]
             if c == "re_labeled" and isinstance(val, float):
-                style = "color:#d97706" if val == -1 else ""
-                display = "?" if val == -1 else str(int(val))
+                style = "color:#d97706" if val == constants.BOUNDARY_SUBJECT_LABEL_VALUE else ""
+                display = "?" if val == constants.BOUNDARY_SUBJECT_LABEL_VALUE else str(int(val))
                 cells += f'<td style="font-family:monospace;{style}">{display}</td>'
             elif isinstance(val, float):
                 cells += f'<td style="font-family:monospace">{val:.4f}</td>'
