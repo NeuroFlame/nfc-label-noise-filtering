@@ -16,43 +16,54 @@ This paper presents Fed LAMP, a label noise filtering based dimensional predicti
   "LabelThreshold": 2,
   "TypicalThreshold": 0.8,
   "TruncationParameter": 0.2,
-  "LabelDefinition": {
-    "1": {
-      "name": "SZ",
-      "label": 1
-    },
-    "2": {
-      "name": "HC",
-      "label": 2
-    }
+  "ControlLabel": "HC",
+  "PatientLabel": "SZ",
+  "LabelFile" : "labels.csv",
+  "ExistingDataFile" : "data.csv",
+  "ReadDataFileFromHalfpipeOutputs": {
+    "atlas": "schaefer2011",
+    "corr": "corrMatrix"
   },
-  "isControlLabel": "HC",
   "FNCDomainNames" :  [0, 5, 7, 16, 25, 42, 49, 53],
   "IgnoreSubjectsWithMissingData" : true,
-  "LogLevel": "info"
+  "LogLevel": "error"
 }
 ```
 
 ### Settings Specification
 
-| Variable Name | Type      | Description                                                                                                                       | Allowed Options | Default | Required |
-| --- |-----------|-----------------------------------------------------------------------------------------------------------------------------------| --- |---------| --- |
-| `SamplingThreshold` | `float`   | To decide how often a sample must look non noisy across repeated random sampling.                                                 | float | 0.7     | ✅ true |
-| `Iteration` | `int`     | Controls how many times the full CRF process is repeated.                                                                         | integer | 101     | ✅ true |
-| `NTree` | `int`     | Number of decision trees in each complete random forest.                                                                          | integer | 201     | ✅ true |
-| `LabelThreshold` | `int`     | Number of change sequence happens in leaf nodes of CRF to detect tree label                                                       | integer | 2       | ✅ true |
-| `TypicalThreshold` | `float`   | To decide if a subject is typical or noisy. If score ≥ this threshold, subject is kept as typical subject                         | float | 0.8     | ✅ true |
-| `TruncationParameter` | `float`   | It trims the extreme x% from both sides of the negative and positive score distributions before computing the boundary threshold. | float | 0.2     | ✅ true |
-| `LabelDefinition` | `object`  | Maps integer label keys to `{name, label}` objects defining each class (e.g. `"1": {"name": "SZ", "label": 1}`)                  | — | —       | ✅ true |
+| Variable Name | Type      | Description                                                                                                                       | Allowed Options   | Default | Required                                                          |
+| --- |-----------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------|---------|-------------------------------------------------------------------|
+| `SamplingThreshold` | `float`   | To decide how often a sample must look non noisy across repeated random sampling.                                                 | float             | 0.7     | ✅ true                                                            |
+| `Iteration` | `int`     | Controls how many times the full CRF process is repeated.                                                                         | integer           | 101     | ✅ true                                                            |
+| `NTree` | `int`     | Number of decision trees in each complete random forest.                                                                          | integer           | 201     | ✅ true                                                            |
+| `LabelThreshold` | `int`     | Number of change sequence happens in leaf nodes of CRF to detect tree label                                                       | integer           | 2       | ✅ true                                                            |
+| `TypicalThreshold` | `float`   | To decide if a subject is typical or noisy. If score ≥ this threshold, subject is kept as typical subject                         | float             | 0.8     | ✅ true                                                            |
+| `TruncationParameter` | `float`   | It trims the extreme x% from both sides of the negative and positive score distributions before computing the boundary threshold. | float             | 0.2     | ✅ true                                                            |
+| `ControlLabel`        | `str or int` | Label used to indicate healthy controls in the dataset| String or integer | -       | ✅ true                                                            |
+| `PatientLabel`        | `str or int` | Label used to indicate patients or unhealthy subjects| integer           | -       | ✅ true                                                            |
+| `LabelFile`    | `str`        | Name of the label file in csv format. This file should contain headers "subject_id" and "diagnosis"| string            | -       | ✅ true                                                            |
+| `ExistingDataFile`        | `str`        | Name of the csv file containing data of all the subjects (subjects * data). For FNC, the data is the linearized upper traingular data of the FNC matrix. Either this or the Halfpipe outputs should be provided for data. Should not contain any header. | string            | -       | ✅ true (if halfpipe outputs are not provided) ❌ false (otherwise) |
+| `ReadDataFileFromHalfpipeOutputs`        | `dict`       | Reads the output files directly from halfpipe output folder based on the atlas and correlation type provided. Either this or  "ExistingDataFile" should be provided for data| dict              | -       | ✅ true (if data file is not provided) ❌ false (otherwise)         |
+| `IgnoreSubjectsWithMissingData`    | bool        | Ignore or fail the run if any of the subjects with empty or missing values       | bool              | false   | ✅ true                                                            |
+| `FNCDomainNames`    | `list`        | Domain names of FNC data used for displaying while rendering FNC data  | string            | []     | ✅ true                                                            |
+| `LogLevel`    | `str`        | Logs the errors. Value either "info" or "error"       | string            | "info"   | ❌false                                                            |
 
 ### Input Description
 
-Each site is required to provide two CSV files:
+Each site is required to data and labels files:
 
-- `data.csv` — rows are subjects, columns are FNC features followed by a label column
-- `labels.csv` — subject labels (one per row, matching the order in `data.csv`)
+**Format -1 :** 
+
+- `data.csv` —  filename can vary and can be configured in _parameters.json_. Each row has vectorized upper triangular FNC data for that subject. The subject ordering in this file should match exactly with labels.csv file.
+- `labels.csv` —  filename can vary and can be configured in _parameters.json_. File with headers "_subject_id_" and "_diagnosis_" and contain label for each subject and its diagnosis as per '_ControlLabel_' or '_PatientLabel_' mentioned in parameters. The subject ordering in this file and the data csv file such match exactly. )
 
 Sample files are available in `test_data/site1/` and `test_data/site2/`.
+
+
+**Format - 2 :** 
+- `Halfpipe output folder` - This folder should contain FNC files for each subject in tsv format. The subject id with which the file name starts with should be mentioned in _labels.csv_. The atlas and correlation matrix that are needed for filename selction should be provided _ReadDataFileFromHalfpipeOutputs_ in parameters.json.
+- `labels.csv` —  filename can vary and can be configured in _parameters.json_. File with headers "_subject_id_" and "_diagnosis_" and contain label for each subject and its diagnosis as per '_ControlLabel_' or '_PatientLabel_' mentioned in parameters. Make sure the 'subject_id' contains the subject id with which the filename in halfpipe outputs starts with. )
 
 ### Algorithm Description
 
