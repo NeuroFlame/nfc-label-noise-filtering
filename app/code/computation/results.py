@@ -10,7 +10,10 @@ def build_site_report(
 ):
     """Render the global heatmaps and assemble this site's self-contained report."""
     domain_names = parameters.get("FNCDomainNames", constants.DEFAULT_FNCDomainNames)
-    label_def = parameters.get("LabelDefinition", {})
+    # validate labels
+    patient_label = parameters.get(constants.PARAM_KEY_PATIENT_LABEL, None)
+    control_label = parameters.get(constants.PARAM_KEY_CONTROL_LABEL, None)
+    label_def = constants.get_label_definitions(patient_label=patient_label, control_label=control_label)
 
     for label, matrix in global_report.global_avg_fnc_original.items():
         label_name = label_def.get(label, {}).get("name", label)

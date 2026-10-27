@@ -34,8 +34,10 @@ def compute_local_crf(inputs: ValidatedInputs, *, parameters, logger, output_dir
     X = get_complete_FNC_matrix_data(data[:, :-1])
     y = data[:, -1]
 
-    label1 = parameters["LabelDefinition"]["1"]["name"]
-    label2 = parameters["LabelDefinition"]["2"]["name"]
+    patient_label =  parameters[constants.PARAM_KEY_PATIENT_LABEL] #label1
+    control_label =  parameters[constants.PARAM_KEY_CONTROL_LABEL]
+    label_def = constants.get_label_definitions(patient_label=patient_label, control_label=control_label)
+
     domain_names = parameters.get("FNCDomainNames", constants.DEFAULT_FNCDomainNames)
 
     t_values, p_values = compute_two_sample_ttest(X, y)
@@ -44,7 +46,7 @@ def compute_local_crf(inputs: ValidatedInputs, *, parameters, logger, output_dir
         corrected_t_values,
         output_dir,
         "original_labels_ttest.png",
-        title=f"Original {label2} Vs {label1} T-test values",
+        title=f"Original {control_label} Vs {patient_label} T-test values",
         colorbar_name="T Values",
         domain_names=domain_names,
     )
@@ -52,7 +54,7 @@ def compute_local_crf(inputs: ValidatedInputs, *, parameters, logger, output_dir
     unique_labels = np.unique(y).astype(int)
     avg_fnc, local_sum_count = average_fnc_by_label(X, y, unique_labels)
     for label in unique_labels:
-        label_name = parameters["LabelDefinition"][str(label)]["name"]
+        label_name = label_def[str(label)]["name"]
         render_fnc_heatmap(
             avg_fnc[label],
             output_dir,
@@ -128,24 +130,30 @@ def compute_dimensional_scores(global_result: GlobalCentroidResult, *, state):
     return with_state(LocalScoreResult(scores=average), next_state)
 
 
-def relabel_subjects(threshold, *, state, parameters, output_dir):
+def relabel_subjects(threshold, *, state, parameters, logger, output_dir):
     """Apply the adaptive threshold, then recompute FNC averages on relabeled subjects."""
     average_score = state["average_score"]
     data = state["data"]
 
+    patient_label = parameters[constants.PARAM_KEY_PATIENT_LABEL] #label1
+    control_label = parameters[constants.PARAM_KEY_CONTROL_LABEL]
+    label_def = constants.get_label_definitions(patient_label=patient_label, control_label=control_label)
+
     total_subjects = average_score.shape[0]
-    re_labels = np.full(total_subjects, -1, dtype=float)
+    re_labels = np.full(total_subjects, constants.BOUNDARY_SUBJECT_LABEL_VALUE, dtype=float)
     mask_sz = average_score < -threshold
     mask_hc = average_score > threshold
-    re_labels[mask_sz] = parameters["LabelDefinition"]["1"]["label"]
-    re_labels[mask_hc] = parameters["LabelDefinition"]["2"]["label"]
+    re_labels[mask_sz] = constants.PATIENT_LABEL_VALUE
+    re_labels[mask_hc] = constants.CONTROL_LABEL_VALUE
+
+    logger.info(f"Site metrices after relabeling: \n Patient count: {np.sum(mask_sz)}; \Control count: {np.sum(mask_hc)};"
+                f" \Boundary count:{total_subjects - np.sum(mask_sz) - np.sum(mask_hc)} \n\n")
 
     scores_df = _build_scores_dataframe(state["site_scores"], average_score, re_labels)
     scores_df.to_csv(f"{output_dir}/relabeled.csv")
 
     X = get_complete_FNC_matrix_data(data[:, :-1])
-    label1 = parameters["LabelDefinition"]["1"]["name"]
-    label2 = parameters["LabelDefinition"]["2"]["name"]
+
     domain_names = parameters.get("FNCDomainNames", constants.DEFAULT_FNCDomainNames)
 
     t_values, p_values = compute_two_sample_ttest(X, re_labels)
@@ -154,16 +162,16 @@ def relabel_subjects(threshold, *, state, parameters, output_dir):
         corrected_t_values,
         output_dir,
         "re_labeled_ttest.png",
-        title=f"Relabeled {label2} Vs {label1} T-test values",
+        title=f"Relabeled {control_label} Vs {patient_label} T-test values",
         colorbar_name="T Values",
         domain_names=domain_names,
     )
 
     unique_labels = np.unique(re_labels).astype(int)
-    unique_labels = unique_labels[unique_labels != -1]
+    unique_labels = unique_labels[unique_labels != constants.BOUNDARY_SUBJECT_LABEL_VALUE]
     avg_fnc, local_sum_count = average_fnc_by_label(X, re_labels, unique_labels)
     for label in unique_labels:
-        label_name = parameters["LabelDefinition"][str(label)]["name"]
+        label_name = label_def[str(label)]["name"]
         render_fnc_heatmap(
             avg_fnc[label],
             output_dir,
@@ -194,8 +202,8 @@ def _build_scores_dataframe(site_scores, average_score, re_labels):
 def split_dataset(dataset, labels):
     """Split a stack of FNC matrices into SZ/HC groups by label."""
     labels12 = np.asarray(labels).reshape(-1)
-    group_sz = dataset[labels12 == 1]
-    group_hc = dataset[labels12 == 2]
+    group_sz = dataset[labels12 == constants.PATIENT_LABEL_VALUE]
+    group_hc = dataset[labels12 == constants.CONTROL_LABEL_VALUE]
     return group_sz, group_hc
 
 
@@ -203,7 +211,7 @@ def compute_two_sample_ttest(dataset, labels12=None):
     """Welch's t-test per FNC cell, comparing HC vs. SZ subjects."""
     group_sz, group_hc = split_dataset(dataset, labels12)
     if group_sz.size == 0 or group_hc.size == 0:
-        raise ValueError("Both groups need at least one subject.")
+        raise ValueError(f"Both groups need at least one subject. \nPatient group size: {group_sz.size}; Control group size: {group_hc.size}")
     return ttest_ind(group_hc, group_sz, axis=0, equal_var=False, nan_policy="omit")
 
 
@@ -270,8 +278,8 @@ def find_typical_subjects(original_labels, label_count, typical_threshold):
     typical_indexes = np.where(label_count[:, 3] >= typical_threshold)[0]
     typical_labels = original_labels[typical_indexes]
 
-    typical_sz = typical_indexes[typical_labels == 1]
-    typical_hc = typical_indexes[typical_labels == 2]
+    typical_sz = typical_indexes[typical_labels == constants.PATIENT_LABEL_VALUE]
+    typical_hc = typical_indexes[typical_labels == constants.CONTROL_LABEL_VALUE]
     return np.array(typical_hc), np.array(typical_sz)
 
 
@@ -307,3 +315,4 @@ def get_centroids(subject_data, subject_label_count, typical_threshold):
         "center_hc": center_hc,
         "selected_features": selected_features,
     }
+
