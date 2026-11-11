@@ -1,8 +1,11 @@
 """Site-side math: local CRF/centroids, dimensional scoring, and relabeling."""
+import os
 
 import numpy as np
 import pandas as pd
 from framework import with_state
+from framework.cache_files import cache_file
+
 from numpy.random import PCG64, Generator, SeedSequence
 from scipy.io import savemat
 from scipy.spatial.distance import cdist
@@ -24,7 +27,12 @@ from .validation import get_complete_FNC_matrix_data
 # Fixed so every site's CRF draws the same sequence of random numbers against
 # its own local data, matching the original single-run seeding.
 _CRF_SEED = 20250908
+CACHE_DIR = "local_cache_dir"
+LOCAL_CACHE_DATA_FILE = cache_file("local_cache_data_file.npy", cache_dir=CACHE_DIR)
 
+parent_dir = os.path.dirname(LOCAL_CACHE_DATA_FILE)
+if not os.path.exists(parent_dir):
+    os.makedirs(parent_dir)
 
 def compute_local_crf(inputs: ValidatedInputs, *, parameters, logger, output_dir):
     """Run the local CRF step: typical-subject centroids + local FNC averages."""
@@ -85,14 +93,22 @@ def compute_local_crf(inputs: ValidatedInputs, *, parameters, logger, output_dir
             str(label): local_sum_count[label]["count"] for label in unique_labels
         },
     )
-    state = {"data": data, "self_token": inputs.self_token}
+    # Save data in local cache as a file
+    if not os.path.exists(LOCAL_CACHE_DATA_FILE):
+        np.save(LOCAL_CACHE_DATA_FILE, data)
+
+    state = {"self_token": inputs.self_token}
     return with_state(payload, state)
 
 
 def compute_dimensional_scores(global_result: GlobalCentroidResult, *, state):
     """Compute each subject's dimensional score against every site's centroids."""
     my_name = global_result.token_to_name[state["self_token"]]
-    data = state["data"]
+
+    # Retrieve the path directly from the cache path
+    # OLD WAY: data = state["data"]
+    data = np.load(LOCAL_CACHE_DATA_FILE)
+
     original_labels = data[:, -1]
 
     site_scores = {}
@@ -133,7 +149,10 @@ def compute_dimensional_scores(global_result: GlobalCentroidResult, *, state):
 def relabel_subjects(threshold, *, state, parameters, logger, output_dir):
     """Apply the adaptive threshold, then recompute FNC averages on relabeled subjects."""
     average_score = state["average_score"]
-    data = state["data"]
+
+    # Retrieve the path directly from the ArtifactRef
+    # OLD WAY: data = state["data"]
+    data = np.load(LOCAL_CACHE_DATA_FILE)
 
     patient_label = parameters[constants.PARAM_KEY_PATIENT_LABEL] #label1
     control_label = parameters[constants.PARAM_KEY_CONTROL_LABEL]
