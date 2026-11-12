@@ -40,15 +40,22 @@ Same fix as the freesurfer migration: `load_inputs` mints a random
 once (in `compute_dimensional_scores`) and keeps it in state for later
 steps, including the final report.
 
-## State replaces the old disk round-trips
+## State and the run cache replace the old disk round-trips
 
 The old code round-tripped intermediate results through disk between tasks
 (`{site}_orig.mat` written then read back via `data_loaders.load_result_matfile`,
-`{site}_relabeled.csv` written then re-read). The new framework persists
-local state for the whole site workflow, so `compute_local_crf` caches the
-validated data array directly in state; `relabel_subjects` and
-`build_site_report` read it back from there instead of disk. `data_loaders.py`
-(whose only callers were those two re-reads) wasn't ported.
+`{site}_relabeled.csv` written then re-read). `data_loaders.py` (whose only
+callers were those two re-reads) wasn't ported.
+
+Small values (the site's `self_token`, its resolved name, its scores) live in
+the framework's local state. The validated subject-by-feature data array is
+cached as a file instead, using the run-scoped `cache_dir` the framework
+injects (computation-nvflare-boilerplate PR #13): `compute_local_crf` saves it
+with `cache_file("local_cache_data_file.npy", cache_dir=cache_dir)`, and
+`compute_dimensional_scores` and `relabel_subjects` load it from the same
+path. `cache_dir` is separate for each site and each run
+(`<output_dir>/.artifacts/cache`) and is cleared when the run ends.
+
 
 ## Output filenames no longer include the site name
 
